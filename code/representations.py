@@ -16,8 +16,7 @@ class Neuron():
         for index, value in var_pairs:
             self.coeff[index] = value
 
-class Layer():
-    
+class Layer():  
     def __init__(
         self,
         neurons: List[Neuron],
@@ -33,3 +32,16 @@ class Network():
     ) -> None:
         ## TODO: sparse representation for large number of unused variables
         self.layers = torch.stack(layers, dim=0)
+
+class AbstractLayer():  
+    def __init__(
+        self,
+        weight_minor_lin_comb: Tensor,
+        weight_greater_lin_comb: Tensor,
+        weight_greater: Tensor,
+        weight_minor: Tensor
+    ) -> None:
+        self.weight_minor_lin_comb = weight_minor_lin_comb
+        self.weight_greater_lin_comb = weight_greater_lin_comb
+        self.weight_greater = weight_greater
+        self.weight_minor = weight_minor
