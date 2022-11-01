@@ -36,12 +36,12 @@ class Network():
 class AbstractLayer():  
     def __init__(
         self,
-        weight_minor_lin_comb: Tensor,
-        weight_greater_lin_comb: Tensor,
-        weight_greater: Tensor,
-        weight_minor: Tensor
+        weights_minor_lin_comb: Tensor,
+        weights_greater_lin_comb: Tensor,
+        upper: Tensor,
+        lower: Tensor
     ) -> None:
-        self.weight_minor_lin_comb = weight_minor_lin_comb
-        self.weight_greater_lin_comb = weight_greater_lin_comb
-        self.weight_greater = weight_greater
-        self.weight_minor = weight_minor
+        self.weights_minor_lin_comb = weights_minor_lin_comb
+        self.weights_greater_lin_comb = weights_greater_lin_comb
+        self.upper = upper
+        self.lower = lower
