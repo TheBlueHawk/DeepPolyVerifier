@@ -3,28 +3,33 @@ from typing import List, Tuple
 import torch
 import torch.nn as nn
 from torch import Tensor
+from torch.nn.utils.rnn import pad_sequence
 
-class Inequality():
+class Neuron():
     def __init__(
         self,
         var_pairs: List[Tuple[int, Double]],
-        num_vars: int
+        num_neurons_in_network: int
     ) -> None:
-        self.n = num_vars
-        self.coeff = torch.tensor([0] * num_vars)
+        ## TODO: sparse representation for large number of unused variables
+        self.coeff = torch.tensor([0] * num_neurons_in_network)
         for index, value in var_pairs:
             self.coeff[index] = value
 
 class Layer():
+    
     def __init__(
         self,
-        neurons: List[Inequality],
+        neurons: List[Neuron],
     ) -> None:
-        self.neurons = neurons
+        ## TODO: sparse representation for large number of unused variables
+        # self.neurons = pad_sequence(neurons).T ?
+        self.neurons = torch.stack(neurons, dim=0)
 
 class Network():
     def __init__(
         self,
         layers: List[Layer],
     ) -> None:
-        self.neurons = layers
+        ## TODO: sparse representation for large number of unused variables
+        self.layers = torch.stack(layers, dim=0)
