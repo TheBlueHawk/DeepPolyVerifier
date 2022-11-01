@@ -17,14 +17,10 @@ class AbstractLinear():
     def forward(self, x: AbstractLayer, weights: Tensor):
         return NotImplementedError
 
-class AbstractFlatten():
-    def __init__(
-        self
-    ) -> None:
-        raise NotImplementedError
-    
+class AbstractFlatten():     
+
     def forward(self, x: AbstractLayer):
-        return NotImplementedError
+        return nn.Flatten(0).forward(x)
 
 
 class AbstractNormalize():
