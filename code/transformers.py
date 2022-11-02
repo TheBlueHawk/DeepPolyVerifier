@@ -53,19 +53,18 @@ class AbstractReLU:
         a_minor_j = torch.where(stricly_negative, torch.zeros_like(u_i), a_minor_i)
 
         # strictly positive: return unchanged
-        # the following lines have no effect, there are here just for clarity
         stricly_positive = l_i >= 0
-        u_j = torch.where(stricly_positive, u_i, u_i)
-        l_j = torch.where(stricly_positive, l_i, l_i)
-        a_greater_j = torch.where(stricly_positive, a_greater_i, a_greater_i)
-        a_minor_j = torch.where(stricly_positive, a_minor_i, a_minor_i)
+        u_j = torch.where(stricly_positive, u_i, u_j)
+        l_j = torch.where(stricly_positive, l_i, l_j)
+        a_greater_j = torch.where(stricly_positive, a_greater_i, a_greater_j)
+        a_minor_j = torch.where(stricly_positive, a_minor_i, a_minor_j)
 
         # crossing: keep upperbound, lowerbound at zero, greater_than zero, less than slope
         crossing = (l_i <= 0) & (u_i >= 0)
         slope = u_i / (u_i - l_i)
-        u_j = torch.where(crossing, u_i, u_i)
-        l_j = torch.where(crossing, torch.zeros_like(l_i), l_i)
-        a_greater_j = torch.where(crossing, torch.zeros_like(u_i), a_greater_i)
-        a_minor_j = torch.where(crossing, slope * (a_minor_i - l_i), a_minor_i)
+        u_j = torch.where(crossing, u_i, u_j)
+        l_j = torch.where(crossing, torch.zeros_like(l_i), l_j)
+        a_greater_j = torch.where(crossing, torch.zeros_like(u_i), a_greater_j)
+        a_minor_j = torch.where(crossing, slope * (a_minor_i - l_i), a_minor_j)
 
         return AbstractLayer(a_minor_j, a_greater_j, u_j, l_j)
