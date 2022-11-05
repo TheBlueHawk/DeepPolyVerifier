@@ -21,8 +21,8 @@ class AbstractLinear:
         U = u.repeat((self.weights.shape[0], 1))
 
         positive_weights = self.weights > 0
-        LU_minor = (L * positive_weights) + (U * (~positive_weights))
-        LU_greater = (L * (~positive_weights)) + (U * positive_weights)
+        LU_minor = torch.where(positive_weights, L, U)
+        LU_greater = torch.where(positive_weights, U, L)
 
         return AbstractLayer(
             weights_minor_lin_comb = self.weights,
