@@ -13,9 +13,23 @@ from representations import AbstractLayer
 class AbstractLinear:
     def __init__(self, weights: Tensor) -> None:
         self.weights = weights
+    
+    def forward(self, x: AbstractLayer):
+        l = torch.cat([torch.tensor([1]), x.lower])
+        L = l.repeat((self.weights.shape[0], 1))
+        u = torch.cat([torch.tensor([1]), x.upper])
+        U = u.repeat((self.weights.shape[0], 1))
 
-    def forward(self, x: AbstractLayer, weights: Tensor):
-        return NotImplementedError
+        positive_weights = self.weights > 0
+        LU_minor = (L * positive_weights) + (U * (~positive_weights))
+        LU_greater = (L * (~positive_weights)) + (U * positive_weights)
+
+        return AbstractLayer(
+            weights_minor_lin_comb = self.weights,
+            weights_greater_lin_comb = self.weights,
+            upper = torch.sum(LU_greater * self.weights, dim=1),
+            lower = torch.sum(LU_minor * self.weights, dim=1)
+        )
 
 
 class AbstractFlatten:
@@ -68,3 +82,25 @@ class AbstractReLU:
         a_minor_j = torch.where(crossing, slope * (a_minor_i - l_i), a_minor_j)
 
         return AbstractLayer(a_minor_j, a_greater_j, u_j, l_j)
+
+def AbstractLinearTest():
+    aInput = AbstractLayer(
+        torch.tensor([-1, -1]).reshape(-1, 1),
+        torch.tensor([1, 1]).reshape(-1, 1),
+        torch.tensor([-1, -1]),
+        torch.tensor([1, 1]))
+    weights = torch.tensor([[0, 1, 2], [-1, -2, 1]])
+    aLinear = AbstractLinear(weights)
+    print(aLinear.forward(aInput))
+
+    # Expected
+    # [-3, -4]
+    # [3, 2]
+
+
+def main():
+    AbstractLinearTest()
+
+if __name__ == "__main__":
+    main()
+
