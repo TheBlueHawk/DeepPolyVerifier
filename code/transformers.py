@@ -83,23 +83,8 @@ class AbstractReLU:
 
         return AbstractLayer(a_minor_j, a_greater_j, u_j, l_j)
 
-def AbstractLinearTest():
-    aInput = AbstractLayer(
-        torch.tensor([-1, -1]).reshape(-1, 1),
-        torch.tensor([1, 1]).reshape(-1, 1),
-        torch.tensor([-1, -1]),
-        torch.tensor([1, 1]))
-    weights = torch.tensor([[0, 1, 2], [-1, -2, 1]])
-    aLinear = AbstractLinear(weights)
-    print(aLinear.forward(aInput))
-
-    # Expected
-    # [-3, -4]
-    # [3, 2]
-
-
 def main():
-    AbstractLinearTest()
+    pass
 
 if __name__ == "__main__":
     main()
