@@ -47,7 +47,21 @@ class AbstractNormalize:
         self.sigma = sigma
 
     def forward(self, x: AbstractLayer):
-        return NotImplementedError
+        y_greater_one_neur = torch.tensor([-self.mean / self.sigma, 1 / self.sigma])
+        y_greater = y_greater_one_neur.repeat((x.lower.shape[0], 1))
+
+        y_less_one_neur = torch.tensor([-self.mean / self.sigma, 1 / self.sigma])
+        y_less = y_less_one_neur.repeat((x.lower.shape[0], 1))
+
+        lower = (x.lower - self.mean) / self.sigma
+        upper = (x.upper - self.mean) / self.sigma
+
+        return AbstractLayer(
+            y_greater=y_greater,
+            y_less=y_less,
+            upper=upper,
+            lower=lower,
+        )
 
 
 class AbstractReLU:
@@ -85,7 +99,14 @@ class AbstractReLU:
 
 
 def main():
-    pass
+    aInput = AbstractLayer(
+        torch.tensor([-1, -2]).reshape(-1, 1),
+        torch.tensor([1, 3]).reshape(-1, 1),
+        torch.tensor([-1, -2]),
+        torch.tensor([1, 3]),
+    )
+    aNorm = AbstractNormalize(1, 2)
+    print(aNorm.forward(aInput))
 
 
 if __name__ == "__main__":
