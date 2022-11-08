@@ -13,7 +13,7 @@ from representations import AbstractLayer
 class AbstractLinear:
     def __init__(self, weights: Tensor) -> None:
         self.weights = weights
-    
+
     def forward(self, x: AbstractLayer):
         l = torch.cat([torch.tensor([1]), x.lower])
         L = l.repeat((self.weights.shape[0], 1))
@@ -25,10 +25,10 @@ class AbstractLinear:
         LU_greater = torch.where(positive_weights, U, L)
 
         return AbstractLayer(
-            weights_minor_lin_comb = self.weights,
-            weights_greater_lin_comb = self.weights,
-            upper = torch.sum(LU_greater * self.weights, dim=1),
-            lower = torch.sum(LU_minor * self.weights, dim=1)
+            y_greater=self.weights,
+            y_less=self.weights,
+            upper=torch.sum(LU_greater * self.weights, dim=1),
+            lower=torch.sum(LU_minor * self.weights, dim=1),
         )
 
 
@@ -52,40 +52,41 @@ class AbstractNormalize:
 
 class AbstractReLU:
     def __init__(self) -> None:
-        raise NotImplementedError
+        return
 
     def forward(self, x: AbstractLayer):
         u_i = x.upper
         l_i = x.lower
-        a_greater_i = x.weights_greater_lin_comb
-        a_minor_i = x.weights_minor_lin_comb
+        a_less_i = x.y_less
+        a_greater_i = x.y_greater
         # strictly negative: zero out
         stricly_negative = u_i <= 0
         u_j = torch.where(stricly_negative, torch.zeros_like(u_i), u_i)
         l_j = torch.where(stricly_negative, torch.zeros_like(l_i), l_i)
+        a_less_j = torch.where(stricly_negative, torch.zeros_like(u_i), a_less_i)
         a_greater_j = torch.where(stricly_negative, torch.zeros_like(u_i), a_greater_i)
-        a_minor_j = torch.where(stricly_negative, torch.zeros_like(u_i), a_minor_i)
 
         # strictly positive: return unchanged
         stricly_positive = l_i >= 0
         u_j = torch.where(stricly_positive, u_i, u_j)
         l_j = torch.where(stricly_positive, l_i, l_j)
+        a_less_j = torch.where(stricly_positive, a_less_i, a_less_j)
         a_greater_j = torch.where(stricly_positive, a_greater_i, a_greater_j)
-        a_minor_j = torch.where(stricly_positive, a_minor_i, a_minor_j)
 
         # crossing: keep upperbound, lowerbound at zero, greater_than zero, less than slope
         crossing = (l_i <= 0) & (u_i >= 0)
         slope = u_i / (u_i - l_i)
         u_j = torch.where(crossing, u_i, u_j)
         l_j = torch.where(crossing, torch.zeros_like(l_i), l_j)
-        a_greater_j = torch.where(crossing, torch.zeros_like(u_i), a_greater_j)
-        a_minor_j = torch.where(crossing, slope * (a_minor_i - l_i), a_minor_j)
+        a_less_j = torch.where(crossing, torch.zeros_like(u_i), a_less_j)
+        a_greater_j = torch.where(crossing, slope * (a_greater_i - l_i), a_greater_j)
 
-        return AbstractLayer(a_minor_j, a_greater_j, u_j, l_j)
+        return AbstractLayer(a_greater_j, a_less_j, u_j, l_j)
+
 
 def main():
     pass
 
+
 if __name__ == "__main__":
     main()
-

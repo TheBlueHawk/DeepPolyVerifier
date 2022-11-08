@@ -37,15 +37,15 @@ from torch.nn.utils.rnn import pad_sequence
 class AbstractLayer:
     def __init__(
         self,
-        weights_minor_lin_comb: Tensor,   # _ <= x_i
-        weights_greater_lin_comb: Tensor, # _ >= x_i 
+        y_greater: Tensor,  # y >= ...
+        y_less: Tensor,  # y <= ...
         lower: Tensor,
         upper: Tensor,
     ) -> None:
-        self.weights_minor_lin_comb = weights_minor_lin_comb
-        self.weights_greater_lin_comb = weights_greater_lin_comb
+        self.y_greater = y_greater
+        self.y_less = y_less
         self.upper = upper
         self.lower = lower
 
     def __str__(self):
-        return (f'{self.weights_minor_lin_comb}\n{self.weights_greater_lin_comb}\n{self.lower}\n{self.upper}')
+        return f"{self.weights_minor_lin_comb}\n{self.weights_greater_lin_comb}\n{self.lower}\n{self.upper}"
