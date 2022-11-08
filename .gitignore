@@ -1,3 +1,4 @@
 code/test_nb.ipynb
 .vscode/
 code/__pycache__/
+tests/__pycache__/
