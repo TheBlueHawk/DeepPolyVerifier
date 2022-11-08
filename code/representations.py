@@ -48,4 +48,4 @@ class AbstractLayer:
         self.lower = lower
 
     def __str__(self):
-        return f"{self.weights_minor_lin_comb}\n{self.weights_greater_lin_comb}\n{self.lower}\n{self.upper}"
+        return f"{self.y_greater}\n{self.y_less}\n{self.lower}\n{self.upper}"

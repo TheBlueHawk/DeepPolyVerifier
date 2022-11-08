@@ -2,7 +2,7 @@ import sys
 
 sys.path.append("../code")
 
-from transformers import AbstractLinear, AbstractReLU
+from transformers import AbstractLinear, AbstractReLU, AbstractNormalize
 from representations import AbstractLayer
 import torch
 
@@ -40,3 +40,18 @@ def test_AbstrctReLU():
     assert torch.allclose(out.y_less, torch.tensor([[1.0, 0.5], [1.0, 0.5]]))
     assert torch.allclose(out.lower, torch.tensor([0.0, 0.0]))
     assert torch.allclose(out.upper, torch.tensor([2.0, 2.0]))
+
+
+def test_AbstractNormalize():
+    aInput = AbstractLayer(
+        torch.FloatTensor([-1, -2]).reshape(-1, 1),
+        torch.FloatTensor([1, 3]).reshape(-1, 1),
+        torch.FloatTensor([-1, -2]),
+        torch.FloatTensor([1, 3]),
+    )
+    aNorm = AbstractNormalize(1, 2)
+
+    out = aNorm.forward(aInput)
+
+    assert torch.allclose(out.lower, torch.FloatTensor([-1, -1.5]))
+    assert torch.allclose(out.upper, torch.FloatTensor([0, 1]))
