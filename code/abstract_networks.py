@@ -1,5 +1,12 @@
-from transformers import (AbstractNormalize, AbstractFlatten, 
-    AbstractLinear, AbstractReLU)
+from abstract_shape import AbstractShape
+from typing import List
+from transformers import (
+    AbstractNormalize,
+    AbstractFlatten,
+    AbstractLinear,
+    AbstractReLU,
+)
+
 
 class AbstractNetwork:
     def __init__(
@@ -12,15 +19,13 @@ class AbstractNetwork:
     def get_abstract_transformers(self):
         return self.abstract_transformers
 
+
 class AbstractNet1:
-    def __init__(
-        self,
-        net
-    ) -> None:
+    def __init__(self, net) -> None:
         self.abstract_transformers = [
             AbstractFlatten(),
             AbstractNormalize(),
             AbstractLinear(),
             AbstractReLU(),
-            AbstractLinear()
+            AbstractLinear(),
         ]
