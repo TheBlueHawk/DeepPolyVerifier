@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from representations import AbstractShape
+from abstract_shape import AbstractShape
 
 
 class AbstractLinear:
@@ -66,47 +66,100 @@ class AbstractNormalize:
 
 class AbstractReLU:
     def __init__(self) -> None:
-        return
+        pass
 
     def forward(self, x: AbstractShape):
+        # Given u_i.shape = [1,n]
+        # output AbstrcatLayer shapes:
+        #
+        # u_j.shape = l_j.shape = [1,n]
+        # a_greater_j = [1,n] (list of alphas, now all alphas = 0)
+        # a_less_j = [2,n] (list of linear coeff, [b,a]: b + ax)
         u_i = x.upper
         l_i = x.lower
-        a_less_i = x.y_less
-        a_greater_i = x.y_greater
+        zero_ones = torch.stack((torch.zeros_like(u_i), torch.ones_like(u_i)), dim=1)
+        # zero_ones = torch.stack((torch.zeros_like(u_i), torch.ones_like(u_i)), dim=0)
+        zero_zeros = torch.zeros_like(zero_ones)
+        ones = torch.ones_like(u_i)
+        zeros = torch.zeros_like(u_i)
+        # TODO set alpha as a param
+        alpha = 0
+
         # strictly negative: zero out
         stricly_negative = u_i <= 0
-        u_j = torch.where(stricly_negative, torch.zeros_like(u_i), u_i)
-        l_j = torch.where(stricly_negative, torch.zeros_like(l_i), l_i)
-        a_less_j = torch.where(stricly_negative, torch.zeros_like(u_i), a_less_i)
-        a_greater_j = torch.where(stricly_negative, torch.zeros_like(u_i), a_greater_i)
+        u_j = torch.where(stricly_negative, zeros, u_i)
+        l_j = torch.where(stricly_negative, zeros, l_i)
+        a_less_j = torch.where(stricly_negative, zero_zeros, zero_zeros)
+        a_greater_j = torch.where(stricly_negative, zeros, zeros)
 
-        # strictly positive: return unchanged
+        # strictly positive: unchanged l,u; set y=x
         stricly_positive = l_i >= 0
         u_j = torch.where(stricly_positive, u_i, u_j)
         l_j = torch.where(stricly_positive, l_i, l_j)
-        a_less_j = torch.where(stricly_positive, a_less_i, a_less_j)
-        a_greater_j = torch.where(stricly_positive, a_greater_i, a_greater_j)
+        a_less_j = torch.where(stricly_positive, zero_ones, a_less_j)
+        a_greater_j = torch.where(stricly_positive, ones, a_greater_j)
 
         # crossing: keep upperbound, lowerbound at zero, greater_than zero, less than slope
         crossing = (l_i <= 0) & (u_i >= 0)
         slope = u_i / (u_i - l_i)
+        print("slope", u_i, l_i, slope)
         u_j = torch.where(crossing, u_i, u_j)
         l_j = torch.where(crossing, torch.zeros_like(l_i), l_j)
-        a_less_j = torch.where(crossing, torch.zeros_like(u_i), a_less_j)
-        a_greater_j = torch.where(crossing, slope * (a_greater_i - l_i), a_greater_j)
+        # print(a_less_j, slope, torch.stack((-1 * l_i, ones)))
+        lin_constr = torch.stack((-1 * l_i, ones), dim=1)
+        lin_constr = (slope * lin_constr.T).T
+        a_less_j = torch.where(crossing, lin_constr, a_less_j)
+        a_greater_j = torch.where(crossing, alpha * ones, a_greater_j)
 
-        return AbstractShape(a_greater_j, a_less_j, u_j, l_j)
+        return AbstractShape(a_greater_j, a_less_j, l_j, u_j)
+
+
+# # To be used for backsubstitution
+# class AbstractReLU:
+#     def __init__(self) -> None:
+#         pass
+
+#     def forward(self, x: AbstractShape):
+#         u_i = x.upper
+#         l_i = x.lower
+#         a_less_i = x.y_less
+#         a_greater_i = x.y_greater
+#         # strictly negative: zero out
+#         stricly_negative = u_i <= 0
+#         u_j = torch.where(stricly_negative, torch.zeros_like(u_i), u_i)
+#         l_j = torch.where(stricly_negative, torch.zeros_like(l_i), l_i)
+#         a_less_j = torch.where(stricly_negative, torch.zeros_like(u_i), a_less_i)
+#         a_greater_j = torch.where(stricly_negative, torch.zeros_like(u_i), a_greater_i)
+
+#         # strictly positive: return unchanged
+#         stricly_positive = l_i >= 0
+#         u_j = torch.where(stricly_positive, u_i, u_j)
+#         l_j = torch.where(stricly_positive, l_i, l_j)
+#         a_less_j = torch.where(stricly_positive, a_less_i, a_less_j)
+#         a_greater_j = torch.where(stricly_positive, a_greater_i, a_greater_j)
+
+#         # crossing: keep upperbound, lowerbound at zero, greater_than zero, less than slope
+#         crossing = (l_i <= 0) & (u_i >= 0)
+#         slope = u_i / (u_i - l_i)
+#         u_j = torch.where(crossing, u_i, u_j)
+#         l_j = torch.where(crossing, torch.zeros_like(l_i), l_j)
+#         a_less_j = torch.where(crossing, slope * (a_greater_i - l_i), a_greater_j)
+#         a_greater_j = torch.where(crossing, torch.zeros_like(u_i), a_less_j)
+#         #a_greater_j = torch.where(crossing, alpha * a_greater_i, a_greater_j)
+
+#         return AbstractShape(a_greater_j, a_less_j, u_j, l_j)
 
 
 def main():
     aInput = AbstractShape(
-        torch.tensor([-1, -2]).reshape(-1, 1),
-        torch.tensor([1, 3]).reshape(-1, 1),
-        torch.tensor([-1, -2]),
-        torch.tensor([1, 3]),
+        torch.tensor([[-0.5, 1.0, 1.0], [0.0, 1.0, -1.0]]),
+        torch.tensor([[-0.5, 1.0, 1.0], [0.0, 1.0, -1.0]]),
+        torch.tensor([-0.5, -2.0]),
+        torch.tensor([2.5, 2.0]),
     )
-    aNorm = AbstractNormalize(1, 2)
-    print(aNorm.forward(aInput))
+    aReLU = AbstractReLU()
+
+    print(aReLU.forward(aInput))
 
 
 if __name__ == "__main__":
