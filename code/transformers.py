@@ -78,6 +78,7 @@ class AbstractReLU:
         u_i = x.upper
         l_i = x.lower
         zero_ones = torch.stack((torch.zeros_like(u_i), torch.ones_like(u_i)), dim=1)
+        # zero_ones = torch.stack((torch.zeros_like(u_i), torch.ones_like(u_i)), dim=0)
         zero_zeros = torch.zeros_like(zero_ones)
         ones = torch.ones_like(u_i)
         zeros = torch.zeros_like(u_i)
@@ -101,12 +102,13 @@ class AbstractReLU:
         # crossing: keep upperbound, lowerbound at zero, greater_than zero, less than slope
         crossing = (l_i <= 0) & (u_i >= 0)
         slope = u_i / (u_i - l_i)
+        print("slope", u_i, l_i, slope)
         u_j = torch.where(crossing, u_i, u_j)
         l_j = torch.where(crossing, torch.zeros_like(l_i), l_j)
         # print(a_less_j, slope, torch.stack((-1 * l_i, ones)))
-        a_less_j = torch.where(
-            crossing, slope * torch.stack((-1 * l_i, ones), dim=1), a_less_j
-        )
+        lin_constr = torch.stack((-1 * l_i, ones), dim=1)
+        lin_constr = (slope * lin_constr.T).T
+        a_less_j = torch.where(crossing, lin_constr, a_less_j)
         a_greater_j = torch.where(crossing, alpha * ones, a_greater_j)
 
         return AbstractLayer(a_greater_j, a_less_j, l_j, u_j)
@@ -150,13 +152,14 @@ class AbstractReLU:
 
 def main():
     aInput = AbstractLayer(
-        torch.tensor([-1, -2]).reshape(-1, 1),
-        torch.tensor([1, 3]).reshape(-1, 1),
-        torch.tensor([-1, -2]),
-        torch.tensor([1, 3]),
+        torch.tensor([[-0.5, 1.0, 1.0], [0.0, 1.0, -1.0]]),
+        torch.tensor([[-0.5, 1.0, 1.0], [0.0, 1.0, -1.0]]),
+        torch.tensor([-0.5, -2.0]),
+        torch.tensor([2.5, 2.0]),
     )
-    aNorm = AbstractNormalize(1, 2)
-    print(aNorm.forward(aInput))
+    aReLU = AbstractReLU()
+
+    print(aReLU.forward(aInput))
 
 
 if __name__ == "__main__":
