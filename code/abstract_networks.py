@@ -1,6 +1,12 @@
-from typing import List, Tuple
-from transformers import (AbstractNormalize, AbstractFlatten, 
-    AbstractLinear, AbstractReLU)
+from abstract_shape import AbstractShape
+from typing import List
+from transformers import (
+    AbstractNormalize,
+    AbstractFlatten,
+    AbstractLinear,
+    AbstractReLU,
+)
+
 
 class AbstractNetwork:
     def __init__(

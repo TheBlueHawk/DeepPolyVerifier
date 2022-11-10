@@ -1,10 +1,12 @@
-from abstract_shape import create_abstract_input_shape
+import torch
+from torch import Tensor
+
+from abstract_shape import create_abstract_input_shape, AbstractShape
 from abstract_networks import AbstractNet1
 
+
 def get_anet_class_from_name(net_name):
-    abstract_nets = {
-        'net1': AbstractNet1
-    }
+    abstract_nets = {"net1": AbstractNet1}
     return abstract_nets[net_name]
 
 
@@ -19,6 +21,21 @@ class DeepPolyVerifier:
         curr_abstract_shape = abstract_input
         for abstract_transformer in self.abstract_net.get_abstract_transformers():
             curr_abstract_shape = abstract_transformer.forward(curr_abstract_shape)
-        
+
         print(curr_abstract_shape)
         return True
+
+
+def getFinalLayerWeights(true_lablel, N) -> Tensor:
+    weights = torch.zeros(N, N)
+    for i in range(N):
+        if i != true_lablel:
+            weights[i][i] = -1
+        else:
+            weights.T[i] = torch.ones(N)
+    return weights
+
+
+def verifyFinalShape(final_shape: AbstractShape) -> bool:
+    l = final_shape.lower
+    return torch.all(torch.greater_equal(l, torch.zeros_like(l))).item()
