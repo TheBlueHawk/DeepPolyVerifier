@@ -3,7 +3,7 @@ import csv
 import torch
 import torch.nn.functional as F
 from networks import get_network, get_net_name, NormalizedResnet
-
+from deep_poly_verifier import DeepPolyVerifier
 
 DEVICE = "cpu"
 DTYPE = torch.float32
@@ -51,8 +51,9 @@ def get_net(net, net_name):
     return net
 
 
-def analyze(net, inputs, eps, true_label):
-    return 0
+def analyze(net, net_name, inputs, eps, true_label):
+    verifier = DeepPolyVerifier(net, net_name)
+    return verifier.verify(inputs, eps, true_label)
 
 
 def main():
@@ -78,7 +79,7 @@ def main():
     pred_label = outs.max(dim=1)[1].item()
     assert pred_label == true_label
 
-    if analyze(net, inputs, eps, true_label):
+    if analyze(net, args.net, inputs, eps, true_label):
         print("verified")
     else:
         print("not verified")

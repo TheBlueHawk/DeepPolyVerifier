@@ -3,12 +3,12 @@ import sys
 sys.path.append("../code")
 
 from transformers import AbstractLinear, AbstractNormalize
-from representations import AbstractLayer
+from representations import AbstractShape
 import torch
 
 
 def test_AbstractLinear():
-    aInput = AbstractLayer(
+    aInput = AbstractShape(
         torch.tensor([-1, -1]).reshape(-1, 1),
         torch.tensor([1, 1]).reshape(-1, 1),
         torch.tensor([-1, -1]),
@@ -39,7 +39,7 @@ def test_AbstractLinear():
 #     assert torch.allclose(out.upper, torch.tensor([2, 2]))
 
 def test_AbstractNormalize():
-    aInput = AbstractLayer(
+    aInput = AbstractShape(
         torch.FloatTensor([-1, -2]).reshape(-1, 1),
         torch.FloatTensor([1, 3]).reshape(-1, 1),
         torch.FloatTensor([-1, -2]),

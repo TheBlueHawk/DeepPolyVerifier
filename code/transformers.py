@@ -7,14 +7,14 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from representations import AbstractLayer
+from representations import AbstractShape
 
 
 class AbstractLinear:
     def __init__(self, weights: Tensor) -> None:
         self.weights = weights
 
-    def forward(self, x: AbstractLayer):
+    def forward(self, x: AbstractShape):
         l = torch.cat([torch.tensor([1]), x.lower])
         L = l.repeat((self.weights.shape[0], 1))
         u = torch.cat([torch.tensor([1]), x.upper])
@@ -24,7 +24,7 @@ class AbstractLinear:
         LU_minor = torch.where(positive_weights, L, U)
         LU_greater = torch.where(positive_weights, U, L)
 
-        return AbstractLayer(
+        return AbstractShape(
             y_greater=self.weights,
             y_less=self.weights,
             upper=torch.sum(LU_greater * self.weights, dim=1),
@@ -33,7 +33,7 @@ class AbstractLinear:
 
 
 class AbstractFlatten:
-    def forward(self, x: AbstractLayer):
+    def forward(self, x: AbstractShape):
         return nn.Flatten(0).forward(x)
 
 
@@ -46,7 +46,7 @@ class AbstractNormalize:
         self.mean = mean
         self.sigma = sigma
 
-    def forward(self, x: AbstractLayer):
+    def forward(self, x: AbstractShape):
         y_greater_one_neur = torch.tensor([-self.mean / self.sigma, 1 / self.sigma])
         y_greater = y_greater_one_neur.repeat((x.lower.shape[0], 1))
 
@@ -56,7 +56,7 @@ class AbstractNormalize:
         lower = (x.lower - self.mean) / self.sigma
         upper = (x.upper - self.mean) / self.sigma
 
-        return AbstractLayer(
+        return AbstractShape(
             y_greater=y_greater,
             y_less=y_less,
             upper=upper,
@@ -68,7 +68,7 @@ class AbstractReLU:
     def __init__(self) -> None:
         return
 
-    def forward(self, x: AbstractLayer):
+    def forward(self, x: AbstractShape):
         u_i = x.upper
         l_i = x.lower
         a_less_i = x.y_less
@@ -95,11 +95,11 @@ class AbstractReLU:
         a_less_j = torch.where(crossing, torch.zeros_like(u_i), a_less_j)
         a_greater_j = torch.where(crossing, slope * (a_greater_i - l_i), a_greater_j)
 
-        return AbstractLayer(a_greater_j, a_less_j, u_j, l_j)
+        return AbstractShape(a_greater_j, a_less_j, u_j, l_j)
 
 
 def main():
-    aInput = AbstractLayer(
+    aInput = AbstractShape(
         torch.tensor([-1, -2]).reshape(-1, 1),
         torch.tensor([1, 3]).reshape(-1, 1),
         torch.tensor([-1, -2]),
