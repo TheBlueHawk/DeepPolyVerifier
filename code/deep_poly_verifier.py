@@ -1,7 +1,7 @@
 import torch
 from torch import Tensor
 
-from abstract_shape import create_abstract_input_shape
+from abstract_shape import create_abstract_input_shape, AbstractShape
 from abstract_networks import AbstractNet1
 
 
@@ -26,7 +26,7 @@ class DeepPolyVerifier:
         return True
 
 
-def getFinalLayerWeights(true_lablel, N):
+def getFinalLayerWeights(true_lablel, N) -> Tensor:
     weights = torch.zeros(N, N)
     for i in range(N):
         if i != true_lablel:
@@ -34,3 +34,8 @@ def getFinalLayerWeights(true_lablel, N):
         else:
             weights.T[i] = torch.ones(N)
     return weights
+
+
+def verifyFinalShape(final_shape: AbstractShape) -> bool:
+    l = final_shape.lower
+    return torch.all(torch.greater_equal(l, torch.zeros_like(l))).item()
