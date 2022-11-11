@@ -1,6 +1,6 @@
 import sys
 
-sys.path.append("../code")
+sys.path.append("./code")
 
 from abstract_shape import AbstractShape
 from transformers import AbstractLinear, AbstractReLU, AbstractNormalize
