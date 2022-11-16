@@ -19,16 +19,16 @@ class AbstractNetwork:
     def get_abstract_transformers(self):
         return self.abstract_transformers
 
-class AbstractNet1 (AbstractNetwork):
-    def __init__(
-        self,
-        net
-    ) -> None:
 
-        super().__init__([
-            AbstractFlatten(),
-            AbstractNormalize(net.layers[0]),
-            AbstractLinear(net.layers[2]),
-            # AbstractReLU(),
-            AbstractLinear(net.layers[4])
-        ])
+class AbstractNet1(AbstractNetwork):
+    def __init__(self, net) -> None:
+
+        super().__init__(
+            [
+                AbstractFlatten(),
+                AbstractNormalize(net.layers[0]),
+                AbstractLinear(net.layers[2]),
+                AbstractReLU(),
+                AbstractLinear(net.layers[4]),
+            ]
+        )

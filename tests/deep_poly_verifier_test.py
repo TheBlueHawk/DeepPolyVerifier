@@ -4,7 +4,7 @@ sys.path.append("./code")
 
 from abstract_shape import AbstractShape
 from deep_poly_verifier import (
-    getFinalLayerWeights,
+    addFinalLayerWeights,
     verifyFinalShape,
     finalLayerVerification,
 )
@@ -12,16 +12,16 @@ import torch
 from torch import Tensor
 
 
-def test_getFinalLayerWeights_1():
+def test_addFinalLayerWeights_1():
     target: Tensor = Tensor([[0, 0, 0, 0], [0, 1, -1, 0], [0, 1, 0, -1]])
-    out = getFinalLayerWeights(0, 3)
+    out = addFinalLayerWeights(0, 3)
 
     assert torch.allclose(out, target)
 
 
-def test_getFinalLayerWeights_2():
+def test_addFinalLayerWeights_2():
     target: Tensor = Tensor([[0, -1, 1], [0, 0, 0]])
-    out = getFinalLayerWeights(1, 2)
+    out = addFinalLayerWeights(1, 2)
     assert torch.allclose(out, target)
 
 

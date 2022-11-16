@@ -12,7 +12,7 @@ def get_anet_class_from_name(net_name):
 
 
 class DeepPolyVerifier:
-    def __init__(self, net, net_name):
+    def __init__(self, net, net_name, use_final_layer=False):
         abstract_net_class = get_anet_class_from_name(net_name)
         self.abstract_net = abstract_net_class(net)
         self.N = 10
@@ -27,7 +27,7 @@ class DeepPolyVerifier:
         return finalLayerVerification(curr_abstract_shape, true_label, self.N)
 
 
-def getFinalLayerWeights(true_lablel: int, N: int) -> Tensor:
+def addFinalLayerWeights(true_lablel: int, N: int) -> Tensor:
     weights = torch.zeros(N, N)
     for i in range(N):
         if i == true_lablel:
@@ -48,7 +48,7 @@ def verifyFinalShape(final_shape: AbstractShape) -> bool:
 def finalLayerVerification(
     current_abstract_shape: AbstractShape, true_label: int, N: int
 ) -> bool:
-    final_layer: AbstractLinear = AbstractLinear(getFinalLayerWeights(true_label, N))
+    final_layer: AbstractLinear = AbstractLinear(addFinalLayerWeights(true_label, N))
     final_shape = final_layer.forward(current_abstract_shape)
     v = verifyFinalShape(final_shape)
     return v
