@@ -11,7 +11,7 @@ from transformers import (
 class AbstractNetwork:
     def __init__(
         self,
-        abstract_transformers: List[AbstractShape],
+        abstract_transformers: List,
     ) -> None:
         ## TODO: sparse representation for large number of unused variables
         self.abstract_transformers = abstract_transformers
@@ -19,13 +19,16 @@ class AbstractNetwork:
     def get_abstract_transformers(self):
         return self.abstract_transformers
 
+class AbstractNet1 (AbstractNetwork):
+    def __init__(
+        self,
+        net
+    ) -> None:
 
-class AbstractNet1:
-    def __init__(self, net) -> None:
-        self.abstract_transformers = [
+        super().__init__([
             AbstractFlatten(),
-            AbstractNormalize(),
-            AbstractLinear(),
-            AbstractReLU(),
-            AbstractLinear(),
-        ]
+            AbstractNormalize(net.layers[0]),
+            AbstractLinear(net.layers[2]),
+            # AbstractReLU(),
+            AbstractLinear(net.layers[4])
+        ])

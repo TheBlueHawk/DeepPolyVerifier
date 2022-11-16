@@ -11,8 +11,24 @@ from abstract_shape import AbstractShape
 
 
 class AbstractLinear:
-    def __init__(self, weights: Tensor) -> None:
-        self.weights = weights
+    def __init__(self, *args) -> None:
+        if isinstance(args[0], nn.Linear):
+            self._init_from_layer(args[0])
+
+        elif isinstance(args[0], torch.Tensor):
+            self._init_from_tensor(args[0])
+
+        else:
+            raise Exception("Invalid arguments passed to the initializer of AbstractLinear")
+
+    def _init_from_tensor(self, weights):
+        self.weights = weights.detach()
+
+    def _init_from_layer(self, layer):
+        self.weights = torch.cat([
+            layer.bias.data.detach().unsqueeze(1),
+            layer.weight.data.detach()
+            ], axis=1)
 
     def forward(self, x: AbstractShape):
         l = torch.cat([torch.tensor([1]), x.lower])
@@ -34,17 +50,28 @@ class AbstractLinear:
 
 class AbstractFlatten:
     def forward(self, x: AbstractShape):
-        return nn.Flatten(0).forward(x)
+        return AbstractShape(
+            x.y_greater.reshape(-1, 1),
+            x.y_less.reshape(-1, 1),
+            x.lower.flatten(),
+            x.upper.flatten()
+        )
 
 
 class AbstractNormalize:
-    def __init__(
-        self,
-        mean: torch.FloatTensor,
-        sigma: torch.FloatTensor,
-    ) -> None:
+    def __init__(self, *args) -> None:
+        if len(args) == 2:
+            self._init_from_values(args[0], args[1])
+        elif len(args) == 1:
+            self._init_from_layer(args[0])
+
+    def _init_from_values(self, mean, sigma):
         self.mean = mean
         self.sigma = sigma
+
+    def _init_from_layer(self, layer):
+        self.mean = layer.mean.flatten()
+        self.sigma = layer.sigma.flatten()
 
     def forward(self, x: AbstractShape):
         y_greater_one_neur = torch.tensor([-self.mean / self.sigma, 1 / self.sigma])
@@ -151,15 +178,11 @@ class AbstractReLU:
 
 
 def main():
-    aInput = AbstractShape(
-        torch.tensor([[-0.5, 1.0, 1.0], [0.0, 1.0, -1.0]]),
-        torch.tensor([[-0.5, 1.0, 1.0], [0.0, 1.0, -1.0]]),
-        torch.tensor([-0.5, -2.0]),
-        torch.tensor([2.5, 2.0]),
-    )
-    aReLU = AbstractReLU()
-
-    print(aReLU.forward(aInput))
+    weights = torch.tensor([[0, 1, 2], [-1, -2, 1]])
+    linear = nn.Linear(5, 5)
+    AbstractLinear(weights)
+    AbstractLinear(linear)
+    AbstractLinear(2)
 
 
 if __name__ == "__main__":
