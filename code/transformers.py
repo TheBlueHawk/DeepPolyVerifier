@@ -19,16 +19,17 @@ class AbstractLinear:
             self._init_from_tensor(args[0])
 
         else:
-            raise Exception("Invalid arguments passed to the initializer of AbstractLinear")
+            raise Exception(
+                "Invalid arguments passed to the initializer of AbstractLinear"
+            )
 
     def _init_from_tensor(self, weights):
         self.weights = weights.detach()
 
     def _init_from_layer(self, layer):
-        self.weights = torch.cat([
-            layer.bias.data.detach().unsqueeze(1),
-            layer.weight.data.detach()
-            ], axis=1)
+        self.weights = torch.cat(
+            [layer.bias.data.detach().unsqueeze(1), layer.weight.data.detach()], axis=1
+        )
 
     def forward(self, x: AbstractShape):
         l = torch.cat([torch.tensor([1]), x.lower])
@@ -54,7 +55,7 @@ class AbstractFlatten:
             x.y_greater.reshape(-1, 1),
             x.y_less.reshape(-1, 1),
             x.lower.flatten(),
-            x.upper.flatten()
+            x.upper.flatten(),
         )
 
 
@@ -104,7 +105,7 @@ class AbstractReLU:
         # a_less_j = [2,n] (list of linear coeff, [b,a]: b + ax)
         u_i = x.upper
         l_i = x.lower
-        zero_ones = torch.stack((torch.zeros_like(u_i), torch.ones_like(u_i)), dim=1)
+        zero_ones = torch.stack((torch.zeros_like(u_i), torch.ones_like(u_i)), dim=0)
         # zero_ones = torch.stack((torch.zeros_like(u_i), torch.ones_like(u_i)), dim=0)
         zero_zeros = torch.zeros_like(zero_ones)
         ones = torch.ones_like(u_i)
@@ -133,8 +134,8 @@ class AbstractReLU:
         u_j = torch.where(crossing, u_i, u_j)
         l_j = torch.where(crossing, torch.zeros_like(l_i), l_j)
         # print(a_less_j, slope, torch.stack((-1 * l_i, ones)))
-        lin_constr = torch.stack((-1 * l_i, ones), dim=1)
-        lin_constr = (slope * lin_constr.T).T
+        lin_constr = torch.stack((-1 * l_i, ones), dim=0)
+        lin_constr = slope * lin_constr
         a_less_j = torch.where(crossing, lin_constr, a_less_j)
         a_greater_j = torch.where(crossing, alpha * ones, a_greater_j)
 
