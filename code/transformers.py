@@ -133,7 +133,6 @@ class AbstractReLU:
         print("slope", u_i, l_i, slope)
         u_j = torch.where(crossing, u_i, u_j)
         l_j = torch.where(crossing, torch.zeros_like(l_i), l_j)
-        # print(a_less_j, slope, torch.stack((-1 * l_i, ones)))
         lin_constr = torch.stack((-1 * l_i, ones), dim=0)
         lin_constr = slope * lin_constr
         a_less_j = torch.where(crossing, lin_constr, a_less_j)

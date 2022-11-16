@@ -51,8 +51,8 @@ def test_finalLayerVerification_1():
     aInput = AbstractShape(
         Tensor([[1, 1], [0, 1]]),
         Tensor([[0, 1], [0, 1]]),
-        Tensor([-2, -2]),
-        Tensor([2, 2]),
+        Tensor([4, -2]),
+        Tensor([6, 2]),
     )
 
     assert finalLayerVerification(aInput, 0, 2) == True

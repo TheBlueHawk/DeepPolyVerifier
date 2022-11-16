@@ -23,7 +23,6 @@ class DeepPolyVerifier:
         curr_abstract_shape = abstract_input
         for abstract_transformer in self.abstract_net.get_abstract_transformers():
             curr_abstract_shape = abstract_transformer.forward(curr_abstract_shape)
-        print(curr_abstract_shape)
         return finalLayerVerification(curr_abstract_shape, true_label, self.N)
 
 
@@ -32,7 +31,6 @@ def addFinalLayerWeights(true_lablel: int, N: int) -> Tensor:
     for i in range(N):
         if i == true_lablel:
             weights.T[i] = torch.ones(N)
-            ## check true label equation
         weights[i][i] += -1
 
     bias = torch.zeros(N, 1)
@@ -58,8 +56,8 @@ def main():
     aInput = AbstractShape(
         Tensor([[1, 1], [0, 1]]),
         Tensor([[0, 1], [0, 1]]),
-        Tensor([-2, -2]),
-        Tensor([2, 2]),
+        Tensor([4, -2]),
+        Tensor([6, 2]),
     )
     b = finalLayerVerification(aInput, 0, 2)
     assert b == True

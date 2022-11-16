@@ -34,8 +34,6 @@ def test_AbstrctReLU_crossing_1():
 
     out = aReLU.forward(aInput)
 
-    print(out.y_greater, out.y_less, out.lower, out.upper)
-
     assert torch.allclose(out.y_greater, torch.tensor([[0.0], [0.0]]))
     assert torch.allclose(out.y_less, torch.tensor([[1.0, 0.5], [1, 0.5]]))
     assert torch.allclose(out.lower, torch.tensor([0.0, 0.0]))
@@ -52,8 +50,6 @@ def test_AbstrctReLU_crossing_2():
     aReLU = AbstractReLU()
 
     out = aReLU.forward(aInput)
-
-    print(out.y_greater, out.y_less, out.lower, out.upper)
 
     assert torch.allclose(out.y_greater, torch.tensor([[0.0], [0.0]]))
     assert torch.allclose(out.y_less, torch.tensor([[5 / 12, 5 / 6], [1, 0.5]]))
