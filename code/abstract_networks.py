@@ -13,7 +13,6 @@ class AbstractNetwork:
         self,
         abstract_transformers: List,
     ) -> None:
-        ## TODO: sparse representation for large number of unused variables
         self.abstract_transformers = abstract_transformers
 
     def get_abstract_transformers(self):

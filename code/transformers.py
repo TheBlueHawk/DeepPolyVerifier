@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from abstract_shape import AbstractShape
+from abstract_shape import AbstractShape, ReluAbstractShape
 
 
 class AbstractLinear:
@@ -138,7 +138,7 @@ class AbstractReLU:
         a_less_j = torch.where(crossing, lin_constr, a_less_j)
         a_greater_j = torch.where(crossing, alpha * ones, a_greater_j)
 
-        return AbstractShape(a_greater_j.T, a_less_j.T, l_j, u_j)
+        return ReluAbstractShape(a_greater_j.T, a_less_j.T, l_j, u_j)
 
 
 # # To be used for backsubstitution
