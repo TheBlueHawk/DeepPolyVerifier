@@ -46,11 +46,31 @@ class LinearAbstractShape(AbstractShape):
     """
 
     def backsub(self, previous_abstract_shape):
-        greater_less_cube = make_cube()
-        bias = 0
+        greater_backsub_cube = make_cube()
+        bias_greater = self.y_greater[:, 0]
+        weights_greater = self.y_greater[:, 1:]
+        new_greater_with_extra = torch.tensordot(weights_greater, 
+                                        greater_backsub_cube, dims=([1],[1]))
+        new_greater = torch.diagonal(new_greater_with_extra, dim1=0, dim2=1).T
 
-        torch.tensordot(a, greater_less_cube, dims=([1],[1]))
+        # Add existing bias to new bias
+        new_greater[:, 0] += bias_greater
 
+        less_backsub_cube = make_cube()
+        bias_less = self.y_less[:, 0]
+        weights_less = self.y_less[:, 1:]
+        new_less_with_extra = torch.tensordot(weights_less, 
+                                            less_backsub_cube, dims=([1],[1]))
+        # new_less = torch.stack([new_less_with_extra[i, i] 
+        #                         for i in range(weights_less.shape[0])],
+        #                         axis=0)
+        new_less = torch.diagonal(new_less_with_extra, dim1=0, dim2=1).T
+        # Add existing bias to new bias
+        new_less[:, 0] += bias_less
+
+        # TODO Not sure which abstract shape we will need here
+        # To update lower, upper, do a forward pass with the new weights
+        return LinearAbstractShape(new_greater, new_less, None, None)
 
 
 class ReluAbstractShape(AbstractShape):
@@ -99,11 +119,24 @@ def create_abstract_input_shape(inputs, eps):
     )
 
 def make_cube():
-    """Assuming that the cube is of shape <N, N-1, N-2>"""
-    return torch.ones(2, 3, 4)
+    """Assuming that the cube is of shape <N, N-1, N-2 + 1>"""
+    return torch.ones(2, 3, 5)
 
 def main():
-    pass
+    cur_shape = LinearAbstractShape(
+        torch.ones(2, 4),
+        torch.ones(2, 4),
+        torch.ones(2),
+        torch.ones(2),
+    )
+    prev_shape = ReluAbstractShape(
+        torch.ones(3, 5),
+        torch.ones(3, 5),
+        torch.ones(3),
+        torch.ones(3),
+    )
+
+    print(cur_shape.backsub(prev_shape))
 
 if __name__ == '__main__':
     main()
