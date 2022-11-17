@@ -7,8 +7,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from abstract_shape import AbstractShape, ReluAbstractShape
-
+from abstract_shape import AbstractShape, ReluAbstractShape, LinearAbstractShape
 
 class AbstractLinear:
     def __init__(self, *args) -> None:
@@ -41,7 +40,7 @@ class AbstractLinear:
         LU_minor = torch.where(positive_weights, L, U)
         LU_greater = torch.where(positive_weights, U, L)
 
-        return AbstractShape(
+        return LinearAbstractShape(
             y_greater=self.weights,
             y_less=self.weights,
             upper=torch.sum(LU_greater * self.weights, dim=1),

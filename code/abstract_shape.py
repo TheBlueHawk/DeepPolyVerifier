@@ -36,7 +36,7 @@ class LinearAbstractShape(AbstractShape):
     """The standard representation of the output of a linear abstract layer.
 
     y_greater and y_less store a value for each pair of neurons in the current
-    layer and the previous layer + the intercept.
+    layer and the previous layer + bias.
 
     Attributes:
         y_greater: tensor of shape <no. curr neurons, no. prev neurons + 1>
@@ -46,14 +46,18 @@ class LinearAbstractShape(AbstractShape):
     """
 
     def backsub(self, previous_abstract_shape):
-        pass
+        greater_less_cube = make_cube()
+        bias = 0
+
+        torch.tensordot(a, greater_less_cube, dims=([1],[1]))
+
 
 
 class ReluAbstractShape(AbstractShape):
     """The compact representation of the output of the abstract ReLU layer.
 
-    y_greater stores only the slope of the line, as the intercept is always 0.
-    y_less stores only the slope and intercept of the line.
+    y_greater stores only the slope of the line, as bias is always 0.
+    y_less stores only the slope and bias of the line.
 
     Attributes:
         y_greater: tensor of shape <no. curr neurons, 1>
@@ -65,15 +69,15 @@ class ReluAbstractShape(AbstractShape):
     def expand(self):
         """Rerepresents a compact relu abstract shape wrt. all neurons in the prevoious layer"""
         
-        intercept_greater = torch.zeros_like(self.y_greater)
+        bias_greater = torch.zeros_like(self.y_greater)
         weights_greater = self.y_greater.flatten()
         weights_greater_expanded = torch.diag(weights_greater)
-        y_greater = torch.cat([intercept_greater, weights_greater_expanded], axis=1)
+        y_greater = torch.cat([bias_greater, weights_greater_expanded], axis=1)
 
-        intercept_less = self.y_less[:, 0:1]
+        bias_less = self.y_less[:, 0:1]
         weights_less = self.y_less[:, 1]
         weights_less_expanded = torch.diag(weights_less)
-        y_less = torch.cat([intercept_less, weights_less_expanded], axis=1)
+        y_less = torch.cat([bias_less, weights_less_expanded], axis=1)
 
         return AbstractShape(
             y_greater,
@@ -93,6 +97,10 @@ def create_abstract_input_shape(inputs, eps):
         lower=torch.clamp(inputs-eps, 0, 1),
         upper=torch.clamp(inputs+eps, 0, 1)
     )
+
+def make_cube():
+    """Assuming that the cube is of shape <N, N-1, N-2>"""
+    return torch.ones(2, 3, 4)
 
 def main():
     pass
