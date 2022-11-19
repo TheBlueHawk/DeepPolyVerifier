@@ -52,6 +52,25 @@ def finalLayerVerification(
     return v
 
 
+def buildConstraints3DMatrix(
+    current_layer_ashape: AbstractShape, previous_layer_ashape: AbstractShape
+) -> Tensor:
+    curr_y_greater = current_layer_ashape.y_greater  # shape: [N, N1+1]
+    prev_y_greater = previous_layer_ashape.y_greater  # shape: [N1, N2+1]
+    prev_y_smaller = previous_layer_ashape.y_less  # shape: [N1, N2+1]
+    N = curr_y_greater.shape[0]  # n_neurons_current_layer
+    N1 = curr_y_greater.shape[1]  # n_neurons_prev_layer
+    N2 = prev_y_greater.shape[1]  # n_neurons_prev_prev_layer
+    assert curr_y_greater.shape[1] == prev_y_smaller.shape[0] == prev_y_greater.shape[0]
+    curr_b = curr_y_greater[:, :, 0].unsqueeze(1)  # shape: [N, 1, 1]
+    bias = torch.concat((curr_b, torch.zeros(N, N2, 1)), dim=1)  # shape: [N, N2+1, 1]
+    alphas = curr_y_greater[:, :, 1:].unsqueeze(1)  # shape: [N, 1, N1]
+    cube = torch.where(
+        alphas.swapdims(1, 2) >= 0, prev_y_greater, prev_y_smaller
+    )  # shape: [N, N1, N2 + 1]
+    return cube
+
+
 def main():
     aInput = AbstractShape(
         Tensor([[1, 1], [0, 1]]),
