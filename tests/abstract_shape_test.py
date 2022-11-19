@@ -2,7 +2,7 @@ import torch
 import sys
 sys.path.append("./code")
 
-from abstract_shape import ReluAbstractShape
+from abstract_shape import ReluAbstractShape, LinearAbstractShape
 
 def test_expand_abstract_shape():
     abstract_shape = ReluAbstractShape(
@@ -19,25 +19,29 @@ def test_expand_abstract_shape():
     assert torch.allclose(out.lower, torch.tensor([7, 8]))
     assert torch.allclose(out.upper, torch.tensor([9, 10]))
 
-# def test_alinear_backsub():
-#     cur_shape = LinearAbstractShape(
-#         torch.ones(2, 4),
-#         -torch.ones(2, 4),
-#         torch.ones(2),
-#         -torch.ones(2),
-#     )
-#     prev_shape = ReluAbstractShape(
-#         2*torch.ones(3, 5),
-#         torch.zeros(3, 5),
-#         torch.ones(3),
-#         torch.ones(3),
-#     )
+def test_alinear_backsub():
+    cur_shape = LinearAbstractShape(
+        torch.tensor([[1., -1, 1, -1], 
+                     [-1., 1, -1, 1]]),
+        torch.tensor([[-1., 1, -1, 1], 
+                     [1., -1, 1, -1]]),
+        torch.ones(2),
+        -torch.ones(2),
+    )
+    prev_shape = ReluAbstractShape(
+        2*torch.ones(3, 5, dtype=torch.float32),
+        torch.stack([torch.zeros(5, dtype=torch.float32), torch.ones(5), -torch.ones(5)]),
+        torch.ones(3),
+        torch.ones(3),
+    )
 
-#     new_shape1 = cur_shape.backsub(prev_shape)
-#     new_shape2 = cur_shape.backsub2(prev_shape)
+    new_shape = cur_shape.backsub(prev_shape)
 
-#     assert new_shape.shape == (2, 5)
-#     assert torch.allclose(new_shape.y_greater, torch.tensor(
-#         [[]]
-#     ))
-#     assert torch.allclose(new_shape.y_less, new_shape2.y_less)
+    assert torch.allclose(new_shape.y_greater, torch.tensor(
+        [[4., 3, 3, 3, 3],
+         [2., 3, 3, 3, 3]]
+    ))
+    assert torch.allclose(new_shape.y_less, torch.tensor(
+        [[-4., -3, -3, -3, -3],
+         [-2., -3, -3, -3, -3]]
+    ))
