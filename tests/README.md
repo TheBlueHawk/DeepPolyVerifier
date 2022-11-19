@@ -1,3 +1,2 @@
 To run tests:
-1. cd into 'tests'
-2. run 'pytest' in the command line
+1. from the root directory of the project run 'pytest' in the command line
