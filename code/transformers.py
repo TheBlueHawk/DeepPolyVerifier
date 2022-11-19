@@ -9,6 +9,7 @@ from torch import Tensor
 
 from abstract_shape import AbstractShape, ReluAbstractShape, LinearAbstractShape
 
+
 class AbstractLinear:
     def __init__(self, *args) -> None:
         if isinstance(args[0], nn.Linear):
@@ -92,10 +93,13 @@ class AbstractNormalize:
 
 
 class AbstractReLU:
-    def __init__(self) -> None:
-        pass
+    def __init__(self, N: int) -> None:
+        self.alpha = torch.rand(N)
 
-    def forward(self, x: AbstractShape):
+    def forward(
+        self,
+        x: AbstractShape,
+    ):
         # Given u_i.shape = [1,n]
         # output AbstrcatLayer shapes:
         #
@@ -138,6 +142,10 @@ class AbstractReLU:
         a_greater_j = torch.where(crossing, alpha * ones, a_greater_j)
 
         return ReluAbstractShape(a_greater_j.T, a_less_j.T, l_j, u_j)
+
+    def clip_alpha_(self):
+        for v in self.alpha.values():
+            v.data = torch.clamp(v.data, 0.0, 1.0)
 
 
 # # To be used for backsubstitution
