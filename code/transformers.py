@@ -50,10 +50,11 @@ class AbstractLinear:
 
 
 class AbstractFlatten:
+    """Produces a compact version."""
     def forward(self, x: AbstractShape):
         return AbstractShape(
-            x.y_greater.reshape(-1, 1),
-            x.y_less.reshape(-1, 1),
+            None,
+            None,
             x.lower.flatten(),
             x.upper.flatten(),
         )
@@ -71,15 +72,15 @@ class AbstractNormalize:
         self.sigma = sigma
 
     def _init_from_layer(self, layer):
-        self.mean = layer.mean.flatten()
-        self.sigma = layer.sigma.flatten()
+        self.mean = layer.mean
+        self.sigma = layer.sigma
 
     def forward(self, x: AbstractShape):
-        y_greater_one_neur = torch.tensor([-self.mean / self.sigma, 1 / self.sigma])
-        y_greater = y_greater_one_neur.repeat((x.lower.shape[0], 1))
+        # y_greater_one_neur = torch.tensor([-self.mean / self.sigma, 1 / self.sigma])
+        y_greater = None # y_greater_one_neur.repeat((x.lower.shape[0], 1))
 
-        y_less_one_neur = torch.tensor([-self.mean / self.sigma, 1 / self.sigma])
-        y_less = y_less_one_neur.repeat((x.lower.shape[0], 1))
+        # y_less_one_neur = torch.tensor([-self.mean / self.sigma, 1 / self.sigma])
+        y_less = None # y_less_one_neur.repeat((x.lower.shape[0], 1))
 
         lower = (x.lower - self.mean) / self.sigma
         upper = (x.upper - self.mean) / self.sigma
@@ -93,8 +94,9 @@ class AbstractNormalize:
 
 
 class AbstractReLU:
-    def __init__(self, N: int) -> None:
-        self.alpha = torch.rand(N)
+    def __init__(self) -> None:
+        # self.alpha = torch.rand(N)
+        pass
 
     def forward(
         self,
