@@ -5,6 +5,7 @@ import torch.nn as nn
 from torch import Tensor
 from torch.nn.utils.rnn import pad_sequence
 
+
 class AbstractShape:
     """Base class of all abstract shapes
 
@@ -14,6 +15,7 @@ class AbstractShape:
         lower: l from the lecture
         upper: u from the lecture
     """
+
     def __init__(
         self,
         y_greater: Tensor,
@@ -32,6 +34,7 @@ class AbstractShape:
     def __str__(self):
         return f"{self.y_greater}\n{self.y_less}\n{self.lower}\n{self.upper}"
 
+
 class LinearAbstractShape(AbstractShape):
     """The standard representation of the output of a linear abstract layer.
 
@@ -44,6 +47,7 @@ class LinearAbstractShape(AbstractShape):
         lower: tensor of shape <no. curr neurons>
         upper: tensor if shape <no. curr neurons>
     """
+
     def backsub(self, previous_abstract_shape):
         greater_backsub_cube = buildConstraints3DMatrix(self, previous_abstract_shape)
         bias_greater = self.y_greater[:, 0]
@@ -79,7 +83,7 @@ class ReluAbstractShape(AbstractShape):
 
     def expand(self):
         """Rerepresents a compact relu abstract shape wrt. all neurons in the prevoious layer"""
-        
+
         bias_greater = torch.zeros_like(self.y_greater)
         weights_greater = self.y_greater.flatten()
         weights_greater_expanded = torch.diag(weights_greater)
@@ -90,11 +94,7 @@ class ReluAbstractShape(AbstractShape):
         weights_less_expanded = torch.diag(weights_less)
         y_less = torch.cat([bias_less, weights_less_expanded], axis=1)
 
-        return AbstractShape(
-            y_greater,
-            y_less,
-            self.lower.clone(),
-            self.upper.clone())
+        return AbstractShape(y_greater, y_less, self.lower.clone(), self.upper.clone())
 
     def backsub(self, previous_abstract_shape):
         expanded_self = self.expand()
@@ -103,10 +103,10 @@ class ReluAbstractShape(AbstractShape):
 
 def create_abstract_input_shape(inputs, eps):
     return AbstractShape(
-        y_greater=torch.clamp(inputs-eps, 0, 1),
-        y_less=torch.clamp(inputs+eps, 0, 1),
-        lower=torch.clamp(inputs-eps, 0, 1),
-        upper=torch.clamp(inputs+eps, 0, 1)
+        y_greater=torch.clamp(inputs - eps, 0, 1),
+        y_less=torch.clamp(inputs + eps, 0, 1),
+        lower=torch.clamp(inputs - eps, 0, 1),
+        upper=torch.clamp(inputs + eps, 0, 1),
     )
 
 def buildConstraints3DMatrix(
@@ -118,7 +118,11 @@ def buildConstraints3DMatrix(
     # N = curr_y_greater.shape[0]  # n_neurons_current_layer
     # N1 = curr_y_greater.shape[1]  # n_neurons_prev_layer
     # N2 = prev_y_greater.shape[1]  # n_neurons_prev_prev_layer
-    assert curr_y_greater.shape[1] - 1 == prev_y_smaller.shape[0] == prev_y_greater.shape[0]
+    assert (
+        curr_y_greater.shape[1] - 1
+        == prev_y_smaller.shape[0]
+        == prev_y_greater.shape[0]
+    )
     # curr_b = curr_y_greater[:, 0].unsqueeze(1)  # shape: [N, 1, 1]
     # bias = torch.concat((curr_b, torch.zeros(N, N2, 1)), dim=1)  # shape: [N, N2+1, 1]
     alphas = curr_y_greater[:, 1:].unsqueeze(1)  # shape: [N, 1, N1]
@@ -129,25 +133,8 @@ def buildConstraints3DMatrix(
 
 
 def main():
-    cur_shape = LinearAbstractShape(
-        torch.rand(2, 4),
-        torch.rand(2, 4),
-        torch.rand(2),
-        torch.rand(2),
-    )
-    prev_shape = ReluAbstractShape(
-        torch.rand(3, 5),
-        torch.rand(3, 5),
-        torch.rand(3),
-        torch.rand(3),
-    )
+    pass
 
-    new_shape1 = cur_shape.backsub(prev_shape)
-    new_shape2 = cur_shape.backsub2(prev_shape)
 
-    assert torch.all(torch.isclose(new_shape1.y_greater, new_shape2.y_greater))
-    assert torch.all(torch.isclose(new_shape1.y_less, new_shape2.y_less))
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
-    
