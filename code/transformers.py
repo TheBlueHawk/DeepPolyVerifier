@@ -99,9 +99,9 @@ class AbstractReLU:
         # Given u_i.shape = [1,n]
         # output AbstrcatLayer shapes:
         #
-        # u_j.shape = l_j.shape = [1,n]
-        # a_greater_j = [1,n] (list of alphas, now all alphas = 0)
-        # a_less_j = [2,n] (list of linear coeff, [b,a]: b + ax)
+        # u_j.shape = l_j.shape = [n]
+        # a_greater_j = [n, 1] (list of alphas, now all alphas = 0)
+        # a_less_j = [n, 2] (list of linear coeff, [b,a]: b + ax)
         u_i = x.upper
         l_i = x.lower
         zero_ones = torch.stack((torch.zeros_like(u_i), torch.ones_like(u_i)), dim=0)
@@ -129,15 +129,15 @@ class AbstractReLU:
         # crossing: keep upperbound, lowerbound at zero, greater_than zero, less than slope
         crossing = (l_i <= 0) & (u_i >= 0)
         slope = u_i / (u_i - l_i)
-        print("slope", u_i, l_i, slope)
+        # print("slope", u_i, l_i, slope)
         u_j = torch.where(crossing, u_i, u_j)
         l_j = torch.where(crossing, torch.zeros_like(l_i), l_j)
         lin_constr = torch.stack((-1 * l_i, ones), dim=0)
         lin_constr = slope * lin_constr
-        a_less_j = torch.where(crossing, lin_constr, a_less_j)
-        a_greater_j = torch.where(crossing, alpha * ones, a_greater_j)
+        a_less_j = torch.where(crossing, lin_constr, a_less_j).T
+        a_greater_j = torch.where(crossing, alpha * ones, a_greater_j).unsqueeze(1)
 
-        return ReluAbstractShape(a_greater_j.T, a_less_j.T, l_j, u_j)
+        return ReluAbstractShape(a_greater_j, a_less_j, l_j, u_j)
 
 
 # # To be used for backsubstitution

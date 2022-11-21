@@ -109,10 +109,6 @@ def create_abstract_input_shape(inputs, eps):
         upper=torch.clamp(inputs+eps, 0, 1)
     )
 
-def make_cube():
-    """Assuming that the cube is of shape <N, N-1, N-2 + 1>"""
-    return torch.ones(2, 3, 5)
-
 def buildConstraints3DMatrix(
     current_layer_ashape: AbstractShape, previous_layer_ashape: AbstractShape
 ) -> Tensor:

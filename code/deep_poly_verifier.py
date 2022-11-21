@@ -2,12 +2,16 @@ import torch
 from torch import Tensor
 
 from abstract_shape import create_abstract_input_shape, AbstractShape
-from abstract_networks import AbstractNet1
+from abstract_networks import AbstractNet1, AbstractNet2, AbstractNet3
 from transformers import AbstractLinear
 
 
 def get_anet_class_from_name(net_name):
-    abstract_nets = {"net1": AbstractNet1}
+    abstract_nets = {
+        "net1": AbstractNet1,
+        "net2": AbstractNet2,
+        "net3": AbstractNet3
+        }
     return abstract_nets[net_name]
 
 
@@ -19,37 +23,13 @@ class DeepPolyVerifier:
 
     def verify(self, inputs, eps, true_label):
         abstract_input = create_abstract_input_shape(inputs, eps)
-
-        curr_abstract_shape = abstract_input
-        for abstract_transformer in self.abstract_net.get_abstract_transformers():
-            curr_abstract_shape = abstract_transformer.forward(curr_abstract_shape)
-        return finalLayerVerification(curr_abstract_shape, true_label, self.N)
-
-
-def addFinalLayerWeights(true_lablel: int, N: int) -> Tensor:
-    weights = torch.zeros(N, N)
-    for i in range(N):
-        if i == true_lablel:
-            weights.T[i] = torch.ones(N)
-        weights[i][i] += -1
-
-    bias = torch.zeros(N, 1)
-    wb = torch.cat((bias, weights), dim=-1)
-    return wb
+        final_abstract_shape = self.abstract_net.forward(abstract_input, true_label, self.N)
+        return verifyFinalShape(final_abstract_shape)
 
 
 def verifyFinalShape(final_shape: AbstractShape) -> bool:
     l = final_shape.lower
     return torch.all(torch.greater_equal(l, torch.zeros_like(l))).item()
-
-
-def finalLayerVerification(
-    current_abstract_shape: AbstractShape, true_label: int, N: int
-) -> bool:
-    final_layer: AbstractLinear = AbstractLinear(addFinalLayerWeights(true_label, N))
-    final_shape = final_layer.forward(current_abstract_shape)
-    v = verifyFinalShape(final_shape)
-    return v
 
 
 def main():

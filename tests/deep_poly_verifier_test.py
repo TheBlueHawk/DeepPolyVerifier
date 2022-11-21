@@ -3,25 +3,26 @@ import sys
 sys.path.append("./code")
 
 from abstract_shape import AbstractShape
+from abstract_networks import AbstractNetwork
 from deep_poly_verifier import (
-    addFinalLayerWeights,
-    verifyFinalShape,
-    finalLayerVerification,
+    verifyFinalShape
 )
 import torch
 from torch import Tensor
 
 
-def test_addFinalLayerWeights_1():
+def test_buildFinalLayerWeights_1():
+    a_net = AbstractNetwork([])
     target: Tensor = Tensor([[0, 0, 0, 0], [0, 1, -1, 0], [0, 1, 0, -1]])
-    out = addFinalLayerWeights(0, 3)
+    out = a_net.buildFinalLayerWeights(0, 3)
 
     assert torch.allclose(out, target)
 
 
-def test_addFinalLayerWeights_2():
+def test_buildFinalLayerWeights_2():
+    a_net = AbstractNetwork([])
     target: Tensor = Tensor([[0, -1, 1], [0, 0, 0]])
-    out = addFinalLayerWeights(1, 2)
+    out = a_net.buildFinalLayerWeights(1, 2)
     assert torch.allclose(out, target)
 
 
@@ -45,14 +46,3 @@ def test_verifyFinalShape_2():
     )
 
     assert verifyFinalShape(aInput) == True
-
-
-def test_finalLayerVerification_1():
-    aInput = AbstractShape(
-        Tensor([[1, 1], [0, 1]]),
-        Tensor([[0, 1], [0, 1]]),
-        Tensor([4, -2]),
-        Tensor([6, 2]),
-    )
-
-    assert finalLayerVerification(aInput, 0, 2) == True
