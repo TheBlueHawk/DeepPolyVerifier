@@ -20,19 +20,26 @@ class DeepPolyVerifier:
 
     def verify(self, inputs, eps, true_label) -> bool:
         abstract_input = create_abstract_input_shape(inputs, eps)
-        while True:
+        counter = 0
+        while counter < 10:
             final_abstract_shape = self.abstract_net.forward(
                 abstract_input, true_label, self.N
             )
             if verifyFinalShape(final_abstract_shape):
                 return True
-            loss = weightedLoss(final_abstract_shape.lower, self.gamma)
-            alphas = self.abstract_net.get_alphas()
-            gradient = torch.autograd.grad(loss, alphas)
-            # TODO: do we need to detach??
-            # input_gradient = [grad.detach() for grad in input_gradient]
-            assert gradient.shape == alphas.shape
-            self.abstract_net.set_alphas(alphas + gradient)
+
+            # alphas = self.abstract_net.get_alphas()
+            # optim = torch.optim.SGD(alphas, lr=1e-2, momentum=0.9)
+            # loss = weightedLoss(final_abstract_shape.lower, self.gamma)
+            # optim.zero_grad()
+            # loss.backward()
+            # optim.step()
+            # gradient = alphas.grad
+            # # TODO: do we need to detach??
+            # # input_gradient = [grad.detach() for grad in input_gradient]
+            # assert gradient.shape == alphas.shape
+            # self.abstract_net.set_alphas(alphas + gradient)
+            counter += 1
 
 
 def verifyFinalShape(final_shape: AbstractShape) -> bool:

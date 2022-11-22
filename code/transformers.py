@@ -116,9 +116,10 @@ class AbstractReLU:
         ones = torch.ones_like(u_i)
         zeros = torch.zeros_like(u_i)
         if self.alphas is None:
-            self.alphas = torch.rand_like(u_i)
-        else:
-            self._clip_alphas()
+            self.alphas = torch.rand_like(u_i)  # .requires_grad_()
+        # else:
+        #     self._clip_alphas()
+        #     self.alphas#.requires_grad_()
         # strictly negative: zero out
         stricly_negative = u_i <= 0
         u_j = torch.where(stricly_negative, zeros, u_i)
