@@ -109,6 +109,7 @@ def create_abstract_input_shape(inputs, eps):
         upper=torch.clamp(inputs + eps, 0, 1),
     )
 
+
 def buildConstraints3DMatrix(
     current_layer_ashape: AbstractShape, previous_layer_ashape: AbstractShape
 ) -> Tensor:
@@ -130,6 +131,24 @@ def buildConstraints3DMatrix(
         alphas.swapdims(1, 2) >= 0, prev_y_greater, prev_y_smaller
     )  # shape: [N, N1, N2 + 1]
     return cube
+
+
+def weightedLoss(output: Tensor, beta: Double) -> Double:
+    """Compute the negative weighted sum of the tensors outputs.
+    Negative entries in the output tensors are weighted more with beta.
+    This loss incentivize changes in paramters that cause high probabilities in non-target outputs
+
+    Args:
+        output (Tensor): the output of final layer of the abstract network: [(x_t - x_i), ...]
+        beta (Double): the weighting factor for negative entries, >= 1
+
+    Returns:
+        Double: loss
+    """
+    assert beta >= 1
+    weighted_out = torch.where(output < 0, output * beta, output)
+    negsum = torch.sum(weighted_out) * (-1)
+    return negsum
 
 
 def main():

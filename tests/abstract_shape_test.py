@@ -10,6 +10,7 @@ from abstract_shape import (
     AbstractShape,
     buildConstraints3DMatrix,
     LinearAbstractShape,
+    weightedLoss,
 )
 
 
@@ -92,3 +93,11 @@ def test_buildConstraints3DMatrix_1():
     )
 
     assert torch.allclose(cube, tgt_cube)
+
+
+def test_weightedLoss_1():
+    out = Tensor([1, 0, 2, -0.1, -0.5])
+    beta = 10.0
+    tgt = Tensor([3.0])
+    loss = weightedLoss(out, beta)
+    assert torch.allclose(loss, tgt)
