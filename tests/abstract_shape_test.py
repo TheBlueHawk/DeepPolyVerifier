@@ -97,7 +97,7 @@ def test_buildConstraints3DMatrix_1():
 
 def test_weightedLoss_1():
     out = Tensor([1, 0, 2, -0.1, -0.5])
-    beta = 10.0
+    gamma = 10.0
     tgt = Tensor([3.0])
-    loss = weightedLoss(out, beta)
+    loss = weightedLoss(out, gamma)
     assert torch.allclose(loss, tgt)

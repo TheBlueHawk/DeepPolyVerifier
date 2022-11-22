@@ -51,6 +51,7 @@ class AbstractLinear:
 
 class AbstractFlatten:
     """Produces a compact version."""
+
     def forward(self, x: AbstractShape):
         return AbstractShape(
             None,
@@ -77,10 +78,10 @@ class AbstractNormalize:
 
     def forward(self, x: AbstractShape):
         # y_greater_one_neur = torch.tensor([-self.mean / self.sigma, 1 / self.sigma])
-        y_greater = None # y_greater_one_neur.repeat((x.lower.shape[0], 1))
+        y_greater = None  # y_greater_one_neur.repeat((x.lower.shape[0], 1))
 
         # y_less_one_neur = torch.tensor([-self.mean / self.sigma, 1 / self.sigma])
-        y_less = None # y_less_one_neur.repeat((x.lower.shape[0], 1))
+        y_less = None  # y_less_one_neur.repeat((x.lower.shape[0], 1))
 
         lower = (x.lower - self.mean) / self.sigma
         upper = (x.upper - self.mean) / self.sigma
@@ -95,8 +96,7 @@ class AbstractNormalize:
 
 class AbstractReLU:
     def __init__(self) -> None:
-        # self.alpha = torch.rand(N)
-        pass
+        self.alphas: Tensor = None  # Updated during forward pass
 
     def forward(
         self,
@@ -115,9 +115,10 @@ class AbstractReLU:
         zero_zeros = torch.zeros_like(zero_ones)
         ones = torch.ones_like(u_i)
         zeros = torch.zeros_like(u_i)
-        # TODO set alpha as a param
-        alpha = 0
-
+        if self.alphas is None:
+            self.alphas = torch.rand_like(u_i)
+        else:
+            self._clip_alphas()
         # strictly negative: zero out
         stricly_negative = u_i <= 0
         u_j = torch.where(stricly_negative, zeros, u_i)
@@ -141,12 +142,14 @@ class AbstractReLU:
         lin_constr = torch.stack((-1 * l_i, ones), dim=0)
         lin_constr = slope * lin_constr
         a_less_j = torch.where(crossing, lin_constr, a_less_j).T
-        a_greater_j = torch.where(crossing, alpha * ones, a_greater_j).unsqueeze(1)
+        a_greater_j = torch.where(crossing, self.alphas * ones, a_greater_j).unsqueeze(
+            1
+        )
 
         return ReluAbstractShape(a_greater_j, a_less_j, l_j, u_j)
 
-    def clip_alpha_(self):
-        for v in self.alpha.values():
+    def _clip_alphas(self):
+        for v in self.alphas.values():
             v.data = torch.clamp(v.data, 0.0, 1.0)
 
 

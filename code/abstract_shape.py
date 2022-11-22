@@ -133,20 +133,20 @@ def buildConstraints3DMatrix(
     return cube
 
 
-def weightedLoss(output: Tensor, beta: Double) -> Double:
+def weightedLoss(output: Tensor, gamma: Double) -> Tensor:
     """Compute the negative weighted sum of the tensors outputs.
-    Negative entries in the output tensors are weighted more with beta.
+    Negative entries in the output tensors are weighted more with gamma.
     This loss incentivize changes in paramters that cause high probabilities in non-target outputs
 
     Args:
         output (Tensor): the output of final layer of the abstract network: [(x_t - x_i), ...]
-        beta (Double): the weighting factor for negative entries, >= 1
+        gamma (Double): the weighting factor for negative entries, >= 1
 
     Returns:
         Double: loss
     """
-    assert beta >= 1
-    weighted_out = torch.where(output < 0, output * beta, output)
+    assert gamma >= 1
+    weighted_out = torch.where(output < 0, output * gamma, output)
     negsum = torch.sum(weighted_out) * (-1)
     return negsum
 

@@ -1,30 +1,38 @@
 import torch
 from torch import Tensor
 
-from abstract_shape import create_abstract_input_shape, AbstractShape
-from abstract_networks import AbstractNet1, AbstractNet2, AbstractNet3
+from abstract_shape import create_abstract_input_shape, AbstractShape, weightedLoss
+from abstract_networks import AbstractNet1, AbstractNet2, AbstractNet3, AbstractNetwork
 from transformers import AbstractLinear
 
 
-def get_anet_class_from_name(net_name):
-    abstract_nets = {
-        "net1": AbstractNet1,
-        "net2": AbstractNet2,
-        "net3": AbstractNet3
-        }
+def get_anet_class_from_name(net_name) -> AbstractNetwork:
+    abstract_nets = {"net1": AbstractNet1, "net2": AbstractNet2, "net3": AbstractNet3}
     return abstract_nets[net_name]
 
 
 class DeepPolyVerifier:
-    def __init__(self, net, net_name, use_final_layer=False):
+    def __init__(self, net, net_name):
         abstract_net_class = get_anet_class_from_name(net_name)
         self.abstract_net = abstract_net_class(net)
         self.N = 10
+        self.gamma = 4
 
-    def verify(self, inputs, eps, true_label):
+    def verify(self, inputs, eps, true_label) -> bool:
         abstract_input = create_abstract_input_shape(inputs, eps)
-        final_abstract_shape = self.abstract_net.forward(abstract_input, true_label, self.N)
-        return verifyFinalShape(final_abstract_shape)
+        while True:
+            final_abstract_shape = self.abstract_net.forward(
+                abstract_input, true_label, self.N
+            )
+            if verifyFinalShape(final_abstract_shape):
+                return True
+            loss = weightedLoss(final_abstract_shape.lower, self.gamma)
+            alphas = self.abstract_net.get_alphas()
+            gradient = torch.autograd.grad(loss, alphas)
+            # TODO: do we need to detach??
+            # input_gradient = [grad.detach() for grad in input_gradient]
+            assert gradient.shape == alphas.shape
+            self.abstract_net.set_alphas(alphas + gradient)
 
 
 def verifyFinalShape(final_shape: AbstractShape) -> bool:
@@ -33,14 +41,7 @@ def verifyFinalShape(final_shape: AbstractShape) -> bool:
 
 
 def main():
-    aInput = AbstractShape(
-        Tensor([[1, 1], [0, 1]]),
-        Tensor([[0, 1], [0, 1]]),
-        Tensor([4, -2]),
-        Tensor([6, 2]),
-    )
-    b = finalLayerVerification(aInput, 0, 2)
-    assert b == True
+    pass
 
 
 if __name__ == "__main__":

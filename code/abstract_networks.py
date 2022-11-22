@@ -17,13 +17,17 @@ class AbstractNetwork:
     ) -> None:
         self.abstract_transformers = abstract_transformers
 
-    def backsub(self, abstract_shape, previous_shapes_list, first_abstract_shape):
+    def backsub(
+        self, abstract_shape, previous_shapes_list, first_abstract_shape
+    ) -> AbstractShape:
         curr_ashape = abstract_shape
         for previous_shape in reversed(previous_shapes_list):
             curr_ashape = curr_ashape.backsub(previous_shape)
 
         # Recompute l & u
-        tmp_ashape_u = AbstractLinear(curr_ashape.y_greater).forward(first_abstract_shape)
+        tmp_ashape_u = AbstractLinear(curr_ashape.y_greater).forward(
+            first_abstract_shape
+        )
         abstract_shape.upper = tmp_ashape_u.upper
         tmp_ashape_l = AbstractLinear(curr_ashape.y_less).forward(first_abstract_shape)
         abstract_shape.lower = tmp_ashape_l.lower
@@ -45,8 +49,16 @@ class AbstractNetwork:
         return wb
 
     def buildFinalLayer(self, true_label: int, N: int) -> bool:
-        final_layer: AbstractLinear = AbstractLinear(self.buildFinalLayerWeights(true_label, N))
+        final_layer: AbstractLinear = AbstractLinear(
+            self.buildFinalLayerWeights(true_label, N)
+        )
         return final_layer
+
+    def get_alphas() -> List[Tensor]:
+        raise NotImplementedError
+
+    def set_alphas() -> List[Tensor]:
+        raise NotImplementedError
 
 
 class AbstractNet1(AbstractNetwork):
@@ -56,7 +68,7 @@ class AbstractNet1(AbstractNetwork):
         self.lin1 = AbstractLinear(net.layers[2])
         self.relu1 = AbstractReLU()
         self.lin2 = AbstractLinear(net.layers[4])
-        self.final_atransformer = None # built in forward
+        self.final_atransformer = None  # built in forward
 
     def forward(self, abstract_shape, true_label, N):
         self.final_atransformer = self.buildFinalLayer(true_label, N)
@@ -78,10 +90,20 @@ class AbstractNet1(AbstractNetwork):
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.final_atransformer.forward(abstract_shape)
-        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes, 
-                                first_abstract_shape)
+        abstract_shape = self.backsub(
+            abstract_shape, prev_abstract_shapes, first_abstract_shape
+        )
 
         return abstract_shape
+
+    def get_alphas(self) -> List[Tensor]:
+        alphas = [self.relu1.alphas]
+        return alphas
+
+    def set_alphas(self, updated_alphas: List[Tensor]) -> List[Tensor]:
+        assert len(updated_alphas) == 1
+        assert len(self.relu1.alphas.shape == updated_alphas[0].shape)
+        self.relu1.alphas = updated_alphas[0]
 
 
 class AbstractNet2(AbstractNetwork):
@@ -93,7 +115,7 @@ class AbstractNet2(AbstractNetwork):
         self.lin2 = AbstractLinear(net.layers[4])
         self.relu2 = AbstractReLU()
         self.lin3 = AbstractLinear(net.layers[6])
-        self.final_atransformer = None # built in forward
+        self.final_atransformer = None  # built in forward
 
     def forward(self, abstract_shape, true_label, N):
         self.final_atransformer = self.buildFinalLayer(true_label, N)
@@ -112,8 +134,9 @@ class AbstractNet2(AbstractNetwork):
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.lin2.forward(abstract_shape)
-        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes,
-                                first_abstract_shape)
+        abstract_shape = self.backsub(
+            abstract_shape, prev_abstract_shapes, first_abstract_shape
+        )
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.relu2.forward(abstract_shape).expand()
@@ -123,10 +146,22 @@ class AbstractNet2(AbstractNetwork):
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.final_atransformer.forward(abstract_shape)
-        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes,
-                                first_abstract_shape)
+        abstract_shape = self.backsub(
+            abstract_shape, prev_abstract_shapes, first_abstract_shape
+        )
 
         return abstract_shape
+
+    def get_alphas(self) -> List[Tensor]:
+        alphas = [self.relu1.alphas, self.relu2.alphas]
+        return alphas
+
+    def set_alphas(self, updated_alphas: List[Tensor]) -> List[Tensor]:
+        assert len(updated_alphas) == 2
+        assert len(self.relu1.alphas.shape == updated_alphas[0].shape)
+        self.relu1.alphas = updated_alphas[0]
+        assert len(self.relu2.alphas.shape == updated_alphas[1].shape)
+        self.relu2.alphas = updated_alphas[1]
 
 
 class AbstractNet3(AbstractNetwork):
@@ -138,7 +173,7 @@ class AbstractNet3(AbstractNetwork):
         self.lin2 = AbstractLinear(net.layers[4])
         self.relu2 = AbstractReLU()
         self.lin3 = AbstractLinear(net.layers[6])
-        self.final_atransformer = None # built in forward
+        self.final_atransformer = None  # built in forward
 
     def forward(self, abstract_shape, true_label, N):
         self.final_atransformer = self.buildFinalLayer(true_label, N)
@@ -157,8 +192,9 @@ class AbstractNet3(AbstractNetwork):
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.lin2.forward(abstract_shape)
-        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes,
-                                first_abstract_shape)
+        abstract_shape = self.backsub(
+            abstract_shape, prev_abstract_shapes, first_abstract_shape
+        )
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.relu2.forward(abstract_shape).expand()
@@ -168,7 +204,19 @@ class AbstractNet3(AbstractNetwork):
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.final_atransformer.forward(abstract_shape)
-        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes,
-                                first_abstract_shape)
+        abstract_shape = self.backsub(
+            abstract_shape, prev_abstract_shapes, first_abstract_shape
+        )
 
         return abstract_shape
+
+    def get_alphas(self) -> List[Tensor]:
+        alphas = [self.relu1.alphas, self.relu2.alphas]
+        return alphas
+
+    def set_alphas(self, updated_alphas: List[Tensor]) -> List[Tensor]:
+        assert len(updated_alphas) == 2
+        assert len(self.relu1.alphas.shape == updated_alphas[0].shape)
+        self.relu1.alphas = updated_alphas[0]
+        assert len(self.relu2.alphas.shape == updated_alphas[1].shape)
+        self.relu2.alphas = updated_alphas[1]
