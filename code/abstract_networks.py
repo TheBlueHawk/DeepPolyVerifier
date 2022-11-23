@@ -29,7 +29,9 @@ class AbstractNetwork:
             first_abstract_shape
         )
         abstract_shape.upper = tmp_ashape_u.upper
-        tmp_ashape_l = AbstractLinear(curr_ashape.y_less).forward(first_abstract_shape)
+        tmp_ashape_l = AbstractLinear(curr_ashape.y_less).forward(
+            first_abstract_shape
+        )
         abstract_shape.lower = tmp_ashape_l.lower
 
         return abstract_shape
@@ -102,7 +104,7 @@ class AbstractNet1(AbstractNetwork):
 
     def set_alphas(self, updated_alphas: List[Tensor]) -> List[Tensor]:
         assert len(updated_alphas) == 1
-        assert len(self.relu1.alphas.shape == updated_alphas[0].shape)
+        assert self.relu1.alphas.shape == updated_alphas[0].shape
         self.relu1.alphas = updated_alphas[0]
 
 
@@ -158,9 +160,9 @@ class AbstractNet2(AbstractNetwork):
 
     def set_alphas(self, updated_alphas: List[Tensor]) -> List[Tensor]:
         assert len(updated_alphas) == 2
-        assert len(self.relu1.alphas.shape == updated_alphas[0].shape)
+        assert self.relu1.alphas.shape == updated_alphas[0].shape
         self.relu1.alphas = updated_alphas[0]
-        assert len(self.relu2.alphas.shape == updated_alphas[1].shape)
+        assert self.relu2.alphas.shape == updated_alphas[1].shape
         self.relu2.alphas = updated_alphas[1]
 
 
@@ -216,7 +218,7 @@ class AbstractNet3(AbstractNetwork):
 
     def set_alphas(self, updated_alphas: List[Tensor]) -> List[Tensor]:
         assert len(updated_alphas) == 2
-        assert len(self.relu1.alphas.shape == updated_alphas[0].shape)
+        assert self.relu1.alphas.shape == updated_alphas[0].shape
         self.relu1.alphas = updated_alphas[0]
-        assert len(self.relu2.alphas.shape == updated_alphas[1].shape)
+        assert self.relu2.alphas.shape == updated_alphas[1].shape
         self.relu2.alphas = updated_alphas[1]

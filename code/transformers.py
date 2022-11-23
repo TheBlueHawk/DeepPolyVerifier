@@ -24,11 +24,11 @@ class AbstractLinear:
             )
 
     def _init_from_tensor(self, weights):
-        self.weights = weights.detach()
+        self.weights = weights
 
     def _init_from_layer(self, layer):
         self.weights = torch.cat(
-            [layer.bias.data.detach().unsqueeze(1), layer.weight.data.detach()], axis=1
+            [layer.bias.data.unsqueeze(1), layer.weight.data], axis=1
         )
 
     def forward(self, x: AbstractShape):
@@ -116,7 +116,7 @@ class AbstractReLU:
         ones = torch.ones_like(u_i)
         zeros = torch.zeros_like(u_i)
         if self.alphas is None:
-            self.alphas = torch.rand_like(u_i)  # .requires_grad_()
+            self.alphas = torch.rand_like(u_i, requires_grad=True)  # .requires_grad_()
         # else:
         #     self._clip_alphas()
         #     self.alphas#.requires_grad_()

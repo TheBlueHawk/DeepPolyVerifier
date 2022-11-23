@@ -1,7 +1,7 @@
 net_1,img1_0.0500.txt,verified
 net_1,img2_0.0550.txt,verified
-net_2,img1_0.2400.txt,not verified
-net_2,img2_0.2360.txt,not verified
+net_2,img1_0.2400.txt,verified
+net_2,img2_0.2360.txt,verified
 net_3,img1_0.0065.txt,not verified
 net_3,img2_0.0081.txt,verified
 net_4,img1_0.2240.txt,
