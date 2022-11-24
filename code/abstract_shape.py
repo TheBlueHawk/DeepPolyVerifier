@@ -34,7 +34,6 @@ class AbstractShape:
     def __str__(self):
         return f"{self.y_greater}\n{self.y_less}\n{self.lower}\n{self.upper}"
 
-
 class LinearAbstractShape(AbstractShape):
     """The standard representation of the output of a linear abstract layer.
 
@@ -108,6 +107,30 @@ def create_abstract_input_shape(inputs, eps):
         lower=torch.clamp(inputs - eps, 0, 1),
         upper=torch.clamp(inputs + eps, 0, 1),
     )
+
+
+
+class ConvAbstractShape(AbstractShape):
+    """The standard representation of the output of a convolutional abstract layer.
+
+    y_greater and y_less store a value for each pair of neurons in the current
+    layer and the previous layer + bias.
+
+    Attributes:
+        y_greater: tensor of shape <C, N, N, 1 + C1 * Kh * Kw>
+        y_less: tensor of shape <C, N, N, 1 + C1 * Kh * Kw>
+        lower: tensor of shape <C, N, N>
+        upper: tensor if shape <C, N N>
+    """
+
+    def backsub(self, previous_abstract_shape):
+        pass
+
+    def backsub_relu(self, previous_relu_shape):
+        pass
+
+    def backsub_conv(self, previous_conv_shape):
+        pass
 
 
 def buildConstraints3DMatrix(
