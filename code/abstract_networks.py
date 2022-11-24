@@ -3,6 +3,7 @@ from typing import List
 from torch import Tensor
 import torch
 from transformers import (
+    AbstractConvolution,
     AbstractNormalize,
     AbstractFlatten,
     AbstractLinear,
@@ -29,9 +30,7 @@ class AbstractNetwork:
             first_abstract_shape
         )
         abstract_shape.upper = tmp_ashape_u.upper
-        tmp_ashape_l = AbstractLinear(curr_ashape.y_less).forward(
-            first_abstract_shape
-        )
+        tmp_ashape_l = AbstractLinear(curr_ashape.y_less).forward(first_abstract_shape)
         abstract_shape.lower = tmp_ashape_l.lower
 
         return abstract_shape
@@ -222,3 +221,225 @@ class AbstractNet3(AbstractNetwork):
         self.relu1.alphas = updated_alphas[0]
         assert self.relu2.alphas.shape == updated_alphas[1].shape
         self.relu2.alphas = updated_alphas[1]
+
+
+class AbstractNet4(AbstractNetwork):
+    def __init__(self, net) -> None:
+        # Conv(device, "mnist", 28, 1, [(16, 3, 2, 1)], [100, 10], 10)
+        self.normalize = AbstractNormalize(net.layers[0])
+        self.conv1 = AbstractConvolution(net.layers[1])
+        self.relu1 = AbstractReLU()
+        self.flatten = AbstractFlatten()
+        self.lin1 = AbstractLinear(net.layers[4])
+        self.final_atransformer = None  # built in forward
+
+    def forward(self, abstract_shape, true_label, N):
+        self.final_atransformer = self.buildFinalLayer(true_label, N)
+        prev_abstract_shapes = []
+
+        # No need to backsub Normalization, it operates pointwise
+        abstract_shape = self.normalize.forward(abstract_shape)
+        first_abstract_shape = abstract_shape
+
+        # Won't get tighter l, u after backsubstituting the first linear layer
+        abstract_shape = self.conv1.forward(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.relu1.forward(abstract_shape).expand()
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.flatten.forward(abstract_shape)
+
+        abstract_shape = self.lin1.forward(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.final_atransformer.forward(abstract_shape)
+        abstract_shape = self.backsub(
+            abstract_shape, prev_abstract_shapes, first_abstract_shape
+        )
+
+        return abstract_shape
+
+    def get_alphas(self) -> List[Tensor]:
+        alphas = [self.relu1.alphas]
+        return alphas
+
+    def set_alphas(self, updated_alphas: List[Tensor]) -> List[Tensor]:
+        assert len(updated_alphas) == 1
+        assert self.relu1.alphas.shape == updated_alphas[0].shape
+        self.relu1.alphas = updated_alphas[0]
+
+
+class AbstractNet5(AbstractNetwork):
+    def __init__(self, net) -> None:
+        # Conv(device, "mnist", 28, 1, [(16, 4, 2, 1), (32, 4, 2, 1)], [100, 10], 10)
+        self.normalize = AbstractNormalize(net.layers[0])
+        self.conv1 = AbstractConvolution(net.layers[1])
+        self.relu1 = AbstractReLU()
+        self.conv2 = AbstractConvolution(net.layers[3])
+        self.relu2 = AbstractReLU()
+        self.flatten = AbstractFlatten()
+        self.lin1 = AbstractLinear(net.layers[6])
+        self.final_atransformer = None  # built in forward
+
+    def forward(self, abstract_shape, true_label, N):
+        self.final_atransformer = self.buildFinalLayer(true_label, N)
+        prev_abstract_shapes = []
+
+        # No need to backsub Normalization, it operates pointwise
+        abstract_shape = self.normalize.forward(abstract_shape)
+        first_abstract_shape = abstract_shape
+
+        # Won't get tighter l, u after backsubstituting the first linear layer
+        abstract_shape = self.conv1.forward(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.relu1.forward(abstract_shape).expand()
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.conv2.forward(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.relu2.forward(abstract_shape).expand()
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.flatten.forward(abstract_shape)
+
+        abstract_shape = self.lin1.forward(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.final_atransformer.forward(abstract_shape)
+        abstract_shape = self.backsub(
+            abstract_shape, prev_abstract_shapes, first_abstract_shape
+        )
+
+        return abstract_shape
+
+    def get_alphas(self) -> List[Tensor]:
+        alphas = [self.relu1.alphas, self.relu2.alphas]
+        return alphas
+
+    def set_alphas(self, updated_alphas: List[Tensor]) -> List[Tensor]:
+        assert len(updated_alphas) == 2
+        assert self.relu1.alphas.shape == updated_alphas[0].shape
+        self.relu1.alphas = updated_alphas[0]
+        assert self.relu2.alphas.shape == updated_alphas[1].shape
+        self.relu1.alphas = updated_alphas[1]
+
+
+class AbstractNet6(AbstractNetwork):
+    def __init__(self, net) -> None:
+        # Conv(device, "cifar10", 32, 3, [(16, 4, 2, 1), (32, 4, 2, 1)], [100, 10], 10)
+        self.normalize = AbstractNormalize(net.layers[0])
+        self.conv1 = AbstractConvolution(net.layers[1])
+        self.relu1 = AbstractReLU()
+        self.conv2 = AbstractConvolution(net.layers[3])
+        self.relu2 = AbstractReLU()
+        self.flatten = AbstractFlatten()
+        self.lin1 = AbstractLinear(net.layers[6])
+        self.final_atransformer = None  # built in forward
+
+    def forward(self, abstract_shape, true_label, N):
+        self.final_atransformer = self.buildFinalLayer(true_label, N)
+        prev_abstract_shapes = []
+
+        # No need to backsub Normalization, it operates pointwise
+        abstract_shape = self.normalize.forward(abstract_shape)
+        first_abstract_shape = abstract_shape
+
+        # Won't get tighter l, u after backsubstituting the first linear layer
+        abstract_shape = self.conv1.forward(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.relu1.forward(abstract_shape).expand()
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.conv2.forward(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.relu2.forward(abstract_shape).expand()
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.flatten.forward(abstract_shape)
+
+        abstract_shape = self.lin1.forward(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.final_atransformer.forward(abstract_shape)
+        abstract_shape = self.backsub(
+            abstract_shape, prev_abstract_shapes, first_abstract_shape
+        )
+
+        return abstract_shape
+
+    def get_alphas(self) -> List[Tensor]:
+        alphas = [self.relu1.alphas, self.relu2.alphas]
+        return alphas
+
+    def set_alphas(self, updated_alphas: List[Tensor]) -> List[Tensor]:
+        assert len(updated_alphas) == 2
+        assert self.relu1.alphas.shape == updated_alphas[0].shape
+        self.relu1.alphas = updated_alphas[0]
+        assert self.relu2.alphas.shape == updated_alphas[1].shape
+        self.relu1.alphas = updated_alphas[1]
+
+
+class AbstractNet7(AbstractNetwork):
+    def __init__(self, net) -> None:
+        # Conv(device, "mnist", 28, 1, [(16, 4, 2, 1), (64, 4, 2, 1)], [100, 100, 10], 10)
+        self.normalize = AbstractNormalize(net.layers[0])
+        self.conv1 = AbstractConvolution(net.layers[1])
+        self.relu1 = AbstractReLU()
+        self.conv2 = AbstractConvolution(net.layers[3])
+        self.relu2 = AbstractReLU()
+        self.flatten = AbstractFlatten()
+        self.lin1 = AbstractLinear(net.layers[6])
+        self.relu3 = AbstractReLU()
+        self.lin2 = AbstractLinear(net.layers[8])
+        self.final_atransformer = None  # built in forward
+
+    def forward(self, abstract_shape, true_label, N):
+        self.final_atransformer = self.buildFinalLayer(true_label, N)
+        prev_abstract_shapes = []
+
+        # No need to backsub Normalization, it operates pointwise
+        abstract_shape = self.normalize.forward(abstract_shape)
+        first_abstract_shape = abstract_shape
+
+        # Won't get tighter l, u after backsubstituting the first linear layer
+        abstract_shape = self.conv1.forward(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.relu1.forward(abstract_shape).expand()
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.conv2.forward(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.relu2.forward(abstract_shape).expand()
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.flatten.forward(abstract_shape)
+
+        abstract_shape = self.lin1.forward(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.final_atransformer.forward(abstract_shape)
+        abstract_shape = self.backsub(
+            abstract_shape, prev_abstract_shapes, first_abstract_shape
+        )
+
+        return abstract_shape
+
+    def get_alphas(self) -> List[Tensor]:
+        alphas = [self.relu1.alphas, self.relu2.alphas, self.relu3.alphas]
+        return alphas
+
+    def set_alphas(self, updated_alphas: List[Tensor]) -> List[Tensor]:
+        assert len(updated_alphas) == 3
+        assert self.relu1.alphas.shape == updated_alphas[0].shape
+        self.relu1.alphas = updated_alphas[0]
+        assert self.relu2.alphas.shape == updated_alphas[1].shape
+        self.relu1.alphas = updated_alphas[1]
+        assert self.relu3.alphas.shape == updated_alphas[2].shape
+        self.relu1.alphas = updated_alphas[2]
