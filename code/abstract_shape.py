@@ -99,6 +99,8 @@ class ReluAbstractShape(AbstractShape):
         expanded_self = self.expand()
         return expanded_self.backsub(previous_abstract_shape)
 
+class Relu2DAbstractShape(AbstractShape):
+    pass
 
 def create_abstract_input_shape(inputs, eps):
     return AbstractShape(
@@ -126,8 +128,8 @@ class ConvAbstractShape(AbstractShape):
     def backsub(self, previous_abstract_shape):
         pass
 
-    def backsub_relu(self, previous_relu_shape):
-        pass
+    def backsub_relu(self, previous_relu_shape: ReluAbstractShape):
+        
 
     def backsub_conv(self, previous_conv_shape):
         pass
