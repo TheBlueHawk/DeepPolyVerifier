@@ -7,7 +7,13 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from abstract_shape import AbstractShape, ReluAbstractShape, LinearAbstractShape
+from abstract_shape import (
+    AbstractShape, 
+    ReluAbstractShape, 
+    LinearAbstractShape,
+    ConvAbstractShape,
+    Relu2DAbstractShape
+)
 
 
 class AbstractLinear:
@@ -93,23 +99,32 @@ class AbstractNormalize:
             lower=lower,
         )
 
-
 class AbstractReLU:
     def __init__(self) -> None:
         self.alphas: Tensor = None  # Updated during forward pass
 
-    def forward(
-        self,
-        x: AbstractShape,
-    ):
+    def forward(self, x: AbstractShape):
+        if isinstance(x, LinearAbstractShape):
+            return self.flat_forward(x.upper, x.lower)
+        elif isinstance(x, ConvAbstractShape):
+            lower = x.lower.flatten()
+            upper = x.upper.flatten()
+            flat_ashape = self.flat_forward(lower, upper)
+            return Relu2DAbstractShape(
+                flat_ashape.y_greater.reshape(*x.upper.shape, 1),
+                flat_ashape.y_less.reshape(*x.upper.shape, 2),
+                flat_ashape.lower.reshape(*x.upper.shape), 
+                flat_ashape.upper.reshape(*x.upper.shape)
+            )
+
+    def flat_forward(self, u_i, l_i):
         # Given u_i.shape = [1,n]
         # output AbstrcatLayer shapes:
         #
         # u_j.shape = l_j.shape = [n]
         # a_greater_j = [n, 1] (list of alphas, now all alphas = 0)
         # a_less_j = [n, 2] (list of linear coeff, [b,a]: b + ax)
-        u_i = x.upper
-        l_i = x.lower
+
         zero_ones = torch.stack((torch.zeros_like(u_i), torch.ones_like(u_i)), dim=0)
         # zero_ones = torch.stack((torch.zeros_like(u_i), torch.ones_like(u_i)), dim=0)
         zero_zeros = torch.zeros_like(zero_ones)
