@@ -122,6 +122,7 @@ class BasicBlock(ResidualBlock, nn.Module):
         outW = 1 + int((2 * padding + inW - kW) / stride)
         return (outChan, outH, outW)
 
+
 def getShapeConv(
     in_shape: Tuple[int, int, int],
     conv_shape: Tuple[int, ...],
@@ -219,4 +220,3 @@ class ResNet(nn.Sequential):
             layers.append(nn.ReLU())
             self.in_planes = planes * block.expansion
         return nn.Sequential(*layers), cur_dim
-

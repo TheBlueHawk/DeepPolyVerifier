@@ -3,10 +3,12 @@ import csv
 import torch
 import torch.nn.functional as F
 from networks import get_network, get_net_name, NormalizedResnet
+from deep_poly_verifier import DeepPolyVerifier
 
-
-DEVICE = 'cpu'
+DEVICE = "cpu"
 DTYPE = torch.float32
+x = 5
+
 
 def transform_image(pixel_values, input_dim):
     normalized_pixel_values = torch.tensor([float(p) / 255.0 for p in pixel_values])
@@ -22,9 +24,10 @@ def transform_image(pixel_values, input_dim):
     assert (image <= 1).all()
     return image
 
+
 def get_spec(spec, dataset):
-    input_dim = [1, 28, 28] if dataset == 'mnist' else [3, 32, 32]
-    eps = float(spec[:-4].split('/')[-1].split('_')[-1])
+    input_dim = [1, 28, 28] if dataset == "mnist" else [3, 32, 32]
+    eps = float(spec[:-4].split("/")[-1].split("_")[-1])
     test_file = open(spec, "r")
     test_instances = csv.reader(test_file, delimiter=",")
     for i, (label, *pixel_values) in enumerate(test_instances):
@@ -37,30 +40,38 @@ def get_spec(spec, dataset):
 
 def get_net(net, net_name):
     net = get_network(DEVICE, net)
-    state_dict = torch.load('../nets/%s' % net_name, map_location=torch.device(DEVICE))
+    state_dict = torch.load("../nets/%s" % net_name, map_location=torch.device(DEVICE))
     if "state_dict" in state_dict.keys():
         state_dict = state_dict["state_dict"]
     net.load_state_dict(state_dict)
     net = net.to(dtype=DTYPE)
     net.eval()
-    if 'resnet' in net_name:
+    if "resnet" in net_name:
         net = NormalizedResnet(DEVICE, net)
     return net
 
 
-def analyze(net, inputs, eps, true_label):
-    return 0
+def analyze(net, net_name, inputs, eps, true_label):
+    verifier = DeepPolyVerifier(net, net_name)
+    return verifier.verify(inputs, eps, true_label)
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Neural network verification using DeepPoly relaxation')
-    parser.add_argument('--net', type=str, required=True, help='Neural network architecture to be verified.')
-    parser.add_argument('--spec', type=str, required=True, help='Test case to verify.')
+    parser = argparse.ArgumentParser(
+        description="Neural network verification using DeepPoly relaxation"
+    )
+    parser.add_argument(
+        "--net",
+        type=str,
+        required=True,
+        help="Neural network architecture to be verified.",
+    )
+    parser.add_argument("--spec", type=str, required=True, help="Test case to verify.")
     args = parser.parse_args()
 
     net_name = get_net_name(args.net)
-    dataset = 'mnist' if 'mnist' in net_name else 'cifar10'
-    
+    dataset = "mnist" if "mnist" in net_name else "cifar10"
+
     inputs, true_label, eps = get_spec(args.spec, dataset)
     net = get_net(args.net, net_name)
 
@@ -68,11 +79,11 @@ def main():
     pred_label = outs.max(dim=1)[1].item()
     assert pred_label == true_label
 
-    if analyze(net, inputs, eps, true_label):
-        print('verified')
+    if analyze(net, args.net, inputs, eps, true_label):
+        print("verified")
     else:
-        print('not verified')
+        print("not verified")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -3,17 +3,17 @@
 This is the project for Reliable and Trustworthy Artificial Intelligence course at ETH Zurich.
 
 ## Folder structure
-In the directory `code` you can find several files. 
+In the directory `code` you can find several files.
 File `networks.py` and `resnet.py` contain encodings of fully connected, convolutional and residual neural network architectures as PyTorch classes.
-The architectures extend `nn.Module` object and consist of standard PyTorch layers (e.g. `Linear`, `Flatten`, `ReLU`, `Conv2d`). Please note that first layer of each network performs normalization of the input image. 
+The architectures extend `nn.Module` object and consist of standard PyTorch layers (e.g. `Linear`, `Flatten`, `ReLU`, `Conv2d`). Please note that first layer of each network performs normalization of the input image.
 File `verifier.py` contains a template of verifier. Loading of the stored networks and test cases is already implemented in `main` function. If you decide to modify `main` function, please ensure that parsing of the test cases works correctly. Your task is to modify `analyze` function by building upon DeepPoly convex relaxation. Note that provided verifier template is guaranteed to achieve **0** points (by always outputting `not verified`).
 
 In folder `nets` you can find 10 neural networks (3 fully connected, 4 convolutional, and 3 residual). These networks are loaded using PyTorch in `verifier.py`.
 You can find architectures of these networks in `networks.py`.
 Note that for ResNet we prepend Normalization layer after loading the network (see `get_net` function in `verifier.py`).
 Name of each network contains the dataset the network is trained used on, e.g. `net3_cifar10_fc3.pt` is network which receives CIFAR-10 images as inputs.
-In folder `examples` you can find 10 subfolders. Each subfolder is associated with one of the 10 networks. In a subfolder corresponding to a network, you can find 2 example test cases for this network. 
-As explained in the lecture, these test cases **are not** part of the set of test cases which we will use for the final evaluation, and they are only here for you to develop your verifier. 
+In folder `examples` you can find 10 subfolders. Each subfolder is associated with one of the 10 networks. In a subfolder corresponding to a network, you can find 2 example test cases for this network.
+As explained in the lecture, these test cases **are not** part of the set of test cases which we will use for the final evaluation, and they are only here for you to develop your verifier.
 
 ## Setup instructions
 
