@@ -241,10 +241,10 @@ class AbstractConvolution:
         )  # [self.c_out, n_possible_kernel_positions, self.w * self.h * self.c_in]
 
         new_l = torch.sum(l_cube * k_flat, dim=-1).view(
-            self.c_out, h_out, w_out
+            1, self.c_out, h_out, w_out
         )  # [self.c_out, h_out, w_out]
         new_u = torch.sum(u_cube * k_flat, dim=-1).view(
-            self.c_out, h_out, w_out
+            1, self.c_out, h_out, w_out
         )  # [self.c_out, h_out, w_out]
 
         y_greater = None
