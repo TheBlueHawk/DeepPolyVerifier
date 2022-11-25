@@ -6,13 +6,16 @@ from xmlrpc.client import Boolean
 import torch
 import torch.nn as nn
 from torch import Tensor
+import torch.nn.functional as F
+
 
 from abstract_shape import (
-    AbstractShape, 
-    ReluAbstractShape, 
+    AbstractShape,
+    ConvAbstractShape,
+    ReluAbstractShape,
     LinearAbstractShape,
     ConvAbstractShape,
-    Relu2DAbstractShape
+    Relu2DAbstractShape,
 )
 
 
@@ -99,6 +102,7 @@ class AbstractNormalize:
             lower=lower,
         )
 
+
 class AbstractReLU:
     def __init__(self) -> None:
         self.alphas: Tensor = None  # Updated during forward pass
@@ -113,8 +117,8 @@ class AbstractReLU:
             return Relu2DAbstractShape(
                 flat_ashape.y_greater.reshape(*x.upper.shape, 1),
                 flat_ashape.y_less.reshape(*x.upper.shape, 2),
-                flat_ashape.lower.reshape(*x.upper.shape), 
-                flat_ashape.upper.reshape(*x.upper.shape)
+                flat_ashape.lower.reshape(*x.upper.shape),
+                flat_ashape.upper.reshape(*x.upper.shape),
             )
 
     def flat_forward(self, u_i, l_i):
@@ -167,6 +171,94 @@ class AbstractReLU:
     def _clip_alphas(self):
         for v in self.alphas.values():
             v.data = torch.clamp(v.data, 0.0, 1.0)
+
+
+class AbstractConvolution:
+    def __init__(
+        self, kernel: Tensor, stride: List(int), padding: List(int), dilation: List(int)
+    ) -> None:
+        assert kernel.dim() == 4
+        self.kernel = kernel
+        self.k_w = kernel.shape[3]
+        self.k_h = kernel.shape[2]
+        self.c_in = kernel.shape[1]
+        self.c_out = kernel.shape[0]
+        self.stride = stride
+        self.padding = padding
+        self.dilation = dilation
+
+    def forward(
+        self,
+        x: AbstractShape,
+    ) -> ConvAbstractShape:
+        # y_greater: tensor of shape <C, N, N, 1 + C1 * Kh * Kw>
+        # y_less: tensor of shape <C, N, N, 1 + C1 * Kh * Kw>
+        # lower: tensor of shape <C, N, N>
+        # upper: tensor if shape <C, N N>
+        assert x.y_greater.dim == 3
+        x_greater = x.y_greater
+        x_less = x.y_less
+        x_l = x.lower
+        x_u = x.upper
+
+        w_in = x_l.shape[-1]
+        h_in = x_l.shape[-2]
+        h_out = (
+            h_in + 2 * self.padding[0] - self.dilation[0] * (self.k_h - 1) - 1
+        ) / self.stride[0] + 1
+        w_out = (
+            w_in + 2 * self.padding[1] - self.dilation[1] * (self.k_w - 1) - 1
+        ) / self.stride[1] + 1
+        n_possible_kernel_positions = h_out * w_out
+
+        l_unfold = F.unfold(
+            x_l.unsqueeze(0),
+            kernel_size=(self.k_h, self.k_w),
+            dilation=self.dilation,
+            padding=self.padding,
+            stride=self.stride,
+        )  # [1, self.w * self.h * self.c_in , n_possible_kernel_positions]
+        u_unfold = F.unfold(
+            x_u.unsqueeze(0),
+            kernel_size=(self.k_h, self.k_w),
+            dilation=self.dilation,
+            padding=self.padding,
+            stride=self.stride,
+        )  # [1, self.w * self.h * self.c_in , n_possible_kernel_positions]
+        k_flat = self.k.flatten(1, -1).unsqueeze(
+            1
+        )  # [self.c_out, 1, self.w * self.h * self.c_in]
+
+        l_cube = torch.where(
+            k_flat > 0, l_unfold.swapdims(-1, -2), u_unfold.swapdims(-1, -2)
+        )  # [self.c_out, n_possible_kernel_positions, self.w * self.h * self.c_in]
+        u_cube = torch.where(
+            k_flat > 0, u_unfold.swapdims(-1, -2), l_unfold.swapdims(-1, -2)
+        )  # [self.c_out, n_possible_kernel_positions, self.w * self.h * self.c_in]
+
+        new_l = torch.sum(l_cube * k_flat, dim=-1).view(
+            self.c_out, h_out, w_out
+        )  # [self.c_out, h_out, w_out]
+        new_u = torch.sum(u_cube * k_flat, dim=-1).view(
+            self.c_out, h_out, w_out
+        )  # [self.c_out, h_out, w_out]
+
+        y_greater = None
+        y_less = None
+
+        return ConvAbstractShape(None, None, new_l, new_u)
+
+    def _compute_new_l_i(self, x_l_i, x_u_i):
+        x_l_i  # shape: (C_in,self.h,self.w)
+        x_u_i  # shape: (C_in,self.h,self.w)
+        y_l_mixed_bounds = torch.where(
+            self.kernel > 0, x_l_i, x_u_i
+        )  # shape: (C_in,self.h,self.w)
+        conv = y_l_mixed_bounds * self.kernel  # shape: (C_out,C_in,self.h,self.w)
+        l_i = torch.sum(
+            conv.reshape(self.c_out, -1)
+        )  # shape: (C_out,C_in * self.h * self.w)
+        return l_i
 
 
 # # To be used for backsubstitution
