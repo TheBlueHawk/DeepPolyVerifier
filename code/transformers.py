@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 import torch.nn.functional as F
+import math
 
 
 from abstract_shape import (
@@ -174,18 +175,16 @@ class AbstractReLU:
 
 
 class AbstractConvolution:
-    def __init__(
-        self, kernel: Tensor, stride: List(int), padding: List(int), dilation: List(int)
-    ) -> None:
-        assert kernel.dim() == 4
-        self.kernel = kernel
-        self.k_w = kernel.shape[3]
-        self.k_h = kernel.shape[2]
-        self.c_in = kernel.shape[1]
-        self.c_out = kernel.shape[0]
-        self.stride = stride
-        self.padding = padding
-        self.dilation = dilation
+    def __init__(self, convLayer: torch.nn.Conv2d) -> None:
+        self.kernel: Tensor = convLayer.weight  # [c_out, c_in, k_h, k_w]
+        self.k_w: int = self.kernel.shape[3]
+        self.k_h: int = self.kernel.shape[2]
+        assert convLayer.kernel_size == (self.k_h, self.k_w)
+        self.c_in: int = self.kernel.shape[1]
+        self.c_out: int = self.kernel.shape[0]
+        self.stride: tuple(int, int) = convLayer.stride
+        self.padding: tuple(int, int) = convLayer.padding
+        self.dilation: tuple(int, int) = convLayer.dilation
 
     def forward(
         self,
@@ -195,7 +194,8 @@ class AbstractConvolution:
         # y_less: tensor of shape <C, N, N, 1 + C1 * Kh * Kw>
         # lower: tensor of shape <C, N, N>
         # upper: tensor if shape <C, N N>
-        assert x.y_greater.dim == 3
+
+        # assert x.y_greater.dim == 3
         x_greater = x.y_greater
         x_less = x.y_less
         x_l = x.lower
@@ -203,29 +203,33 @@ class AbstractConvolution:
 
         w_in = x_l.shape[-1]
         h_in = x_l.shape[-2]
-        h_out = (
-            h_in + 2 * self.padding[0] - self.dilation[0] * (self.k_h - 1) - 1
-        ) / self.stride[0] + 1
-        w_out = (
-            w_in + 2 * self.padding[1] - self.dilation[1] * (self.k_w - 1) - 1
-        ) / self.stride[1] + 1
+        h_out = math.floor(
+            (h_in + 2 * self.padding[0] - self.dilation[0] * (self.k_h - 1) - 1)
+            / self.stride[0]
+            + 1
+        )
+        w_out = math.floor(
+            (w_in + 2 * self.padding[1] - self.dilation[1] * (self.k_w - 1) - 1)
+            / self.stride[1]
+            + 1
+        )
         n_possible_kernel_positions = h_out * w_out
 
         l_unfold = F.unfold(
-            x_l.unsqueeze(0),
+            x_l,
             kernel_size=(self.k_h, self.k_w),
             dilation=self.dilation,
             padding=self.padding,
             stride=self.stride,
         )  # [1, self.w * self.h * self.c_in , n_possible_kernel_positions]
         u_unfold = F.unfold(
-            x_u.unsqueeze(0),
+            x_u,
             kernel_size=(self.k_h, self.k_w),
             dilation=self.dilation,
             padding=self.padding,
             stride=self.stride,
         )  # [1, self.w * self.h * self.c_in , n_possible_kernel_positions]
-        k_flat = self.k.flatten(1, -1).unsqueeze(
+        k_flat = self.kernel.flatten(1, -1).unsqueeze(
             1
         )  # [self.c_out, 1, self.w * self.h * self.c_in]
 

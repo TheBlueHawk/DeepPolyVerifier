@@ -7,7 +7,7 @@ from deep_poly_verifier import DeepPolyVerifier
 
 DEVICE = "cpu"
 DTYPE = torch.float32
-x=5
+x = 5
 
 
 def transform_image(pixel_values, input_dim):
