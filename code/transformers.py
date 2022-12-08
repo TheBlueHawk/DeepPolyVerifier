@@ -247,6 +247,7 @@ class AbstractConvolution:
             1, self.c_out, h_out, w_out
         )  # [self.c_out, h_out, w_out]
 
+        # TODO: = kernel flattened
         y_greater = None
         y_less = None
 

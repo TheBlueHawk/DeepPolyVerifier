@@ -1,3 +1,4 @@
+from __future__ import annotations
 from tokenize import Double
 from typing import List, Tuple
 import torch
@@ -6,6 +7,8 @@ from torch import Tensor
 from torch.nn.utils.rnn import pad_sequence
 import torch.functional as F
 from math import sqrt
+from torch.nn.functional import conv_transpose2d
+
 
 class AbstractShape:
     """Base class of all abstract shapes
@@ -34,6 +37,7 @@ class AbstractShape:
 
     def __str__(self):
         return f"{self.y_greater}\n{self.y_less}\n{self.lower}\n{self.upper}"
+
 
 class LinearAbstractShape(AbstractShape):
     """The standard representation of the output of a linear abstract layer.
@@ -101,10 +105,8 @@ class ReluAbstractShape(AbstractShape):
         return expanded_self.backsub(previous_abstract_shape)
 
 
-
 class Relu2DAbstractShape(AbstractShape):
     pass
-
 
 
 class ConvAbstractShape(AbstractShape):
@@ -120,11 +122,16 @@ class ConvAbstractShape(AbstractShape):
         upper: tensor if shape <C, N N>
     """
 
-    def backsub(self, previous_abstract_shape):
-        pass
+    def backsub(self, previous_abstract_shape: AbstractShape) -> ConvAbstractShape:
+        if isinstance(previous_abstract_shape, ReluAbstractShape):
+            return self.backsub_relu(previous_abstract_shape)
+        elif isinstance(previous_abstract_shape, ConvAbstractShape):
+            return self.backsub_conv(previous_abstract_shape)
+        else:
+            raise TypeError(type(previous_abstract_shape))
 
-    def backsub_relu(self, previous_relu_shape: ReluAbstractShape):
-        #initialize the hyperparams
+    def backsub_relu(self, previous_relu_shape: ReluAbstractShape) -> ConvAbstractShape:
+        # initialize the hyperparams
         cur_y_greater = self.y_greater
         cur_y_less = self.y_less
         prev_y_greater = previous_relu_shape.y_greater
@@ -144,48 +151,109 @@ class ConvAbstractShape(AbstractShape):
             """
             prev_vals = prev_vals.unsqueeze(0)
             prev_vals_unfolded = F.unfold(
-                prev_vals,
-                kernel_size=K,
-                padding=PADDING,
-                stride=STRIDE
+                prev_vals, kernel_size=K, padding=PADDING, stride=STRIDE
             ).squeeze()
-            prev_vals_prepd = torch.cat([prev_vals_unfolded for _ in range(C)], axis=1).T
+            prev_vals_prepd = torch.cat(
+                [prev_vals_unfolded for _ in range(C)], axis=1
+            ).T
             return prev_vals_prepd
 
         def calculate_new_w(cur_w, prev_w_opt1, prev_w_opt2):
             # if kernel weight >= 0 multiply with alpha, else multiply with lambda
-            cur_w_lin = cur_w.reshape(-1, C1*K*K)
+            cur_w_lin = cur_w.reshape(-1, C1 * K * K)
             weight_multiplier = torch.where(cur_w_lin >= 0, prev_w_opt1, prev_w_opt2)
             new_w = (cur_w_lin * weight_multiplier).reshape(C, N, N, -1)
             return new_w
 
         def calculate_new_bias(cur_bias, cur_w, prev_bias_opt1, prev_bias_opt2):
-            cur_w_lin = cur_w.reshape(-1, C1*K*K)
-            bias_multiplier = torch.where(cur_w_lin >= 0, prev_bias_opt1, prev_bias_opt2)
-            additional_bias = torch.sum(cur_w_lin * bias_multiplier, axis=1).reshape(C,N,N,1)
+            cur_w_lin = cur_w.reshape(-1, C1 * K * K)
+            bias_multiplier = torch.where(
+                cur_w_lin >= 0, prev_bias_opt1, prev_bias_opt2
+            )
+            additional_bias = torch.sum(cur_w_lin * bias_multiplier, axis=1).reshape(
+                C, N, N, 1
+            )
             new_bias = cur_bias + additional_bias
             return new_bias
 
-        prev_y_greater_bias_prepd = prep_prev_val(torch.zeros_like(prev_y_greater[...,0]))
-        prev_y_greater_w_prepd = prep_prev_val(prev_y_greater[...,0])
-        prev_y_less_bias_prepd = prep_prev_val(prev_y_less[...,0])
-        prev_y_less_w_prepd = prep_prev_val(prev_y_less[...,1])
+        prev_y_greater_bias_prepd = prep_prev_val(
+            torch.zeros_like(prev_y_greater[..., 0])
+        )
+        prev_y_greater_w_prepd = prep_prev_val(prev_y_greater[..., 0])
+        prev_y_less_bias_prepd = prep_prev_val(prev_y_less[..., 0])
+        prev_y_less_w_prepd = prep_prev_val(prev_y_less[..., 1])
 
-        new_y_greater_w = calculate_new_w(cur_y_greater[...,1:], prev_y_greater_w_prepd, prev_y_less_w_prepd)
-        new_y_less_w = calculate_new_w(cur_y_less[...,1:], prev_y_less_w_prepd, prev_y_greater_w_prepd)
+        new_y_greater_w = calculate_new_w(
+            cur_y_greater[..., 1:], prev_y_greater_w_prepd, prev_y_less_w_prepd
+        )
+        new_y_less_w = calculate_new_w(
+            cur_y_less[..., 1:], prev_y_less_w_prepd, prev_y_greater_w_prepd
+        )
 
-        new_y_greater_bias = calculate_new_bias(cur_y_greater[...,0:1], cur_y_greater[...,1:], 
-                                                prev_y_greater_bias_prepd, prev_y_less_bias_prepd)
-        new_y_less_bias = calculate_new_bias(cur_y_less[...,0:1], cur_y_less[...,1:], 
-                                                prev_y_less_bias_prepd, prev_y_greater_bias_prepd)
+        new_y_greater_bias = calculate_new_bias(
+            cur_y_greater[..., 0:1],
+            cur_y_greater[..., 1:],
+            prev_y_greater_bias_prepd,
+            prev_y_less_bias_prepd,
+        )
+        new_y_less_bias = calculate_new_bias(
+            cur_y_less[..., 0:1],
+            cur_y_less[..., 1:],
+            prev_y_less_bias_prepd,
+            prev_y_greater_bias_prepd,
+        )
 
         new_y_greater = torch.cat([new_y_greater_bias, new_y_greater_w], axis=3)
         new_y_less = torch.cat([new_y_less_bias, new_y_less_w], axis=3)
 
         return ConvAbstractShape(new_y_greater, new_y_less, None, None)
 
-    def backsub_conv(self, previous_conv_shape):
-        pass
+    def backsub_conv(self, previous_conv_shape: ConvAbstractShape) -> ConvAbstractShape:
+        cur_y_greater = self.y_greater  # <C, N, N, 1 + C1 * K * K>
+        prev_y_greater = previous_conv_shape.y_greater  # <C1, N1, N1, 1 + C2 * K1 * K1>
+        C = cur_y_greater.shape[0]
+        N = cur_y_greater.shape[1]
+        C1 = prev_y_greater.shape[0]
+        N1 = prev_y_greater.shape[1]
+        K = int(sqrt((cur_y_greater.shape[3] - 1) / C1))
+        K1 = K  # this is not the case in general but it holds for our networks
+        C2 = (prev_y_greater[3] - 1) / (K1**2)
+        PADDING = 1
+        STRIDE = 2
+
+        # Separate bias and reshape as <batchdim=C*N*N, kernel dims>
+        inputs = cur_y_greater[:, :, :, 1:].reshape(
+            (C * N * N, C1, K, K)
+        )  # <C * N * N, C1, K, K> .         # doc: (minibatch,in_channels,iH,iW)
+        # Separate bias, isolate kernel and reshape
+        weights = (
+            cur_y_greater[:, 0, 0, 1:]  # same kernel for all pixels
+            .squeeze(dim=1)
+            .squeeze(dim=1)
+            .reshape((C1, C2, K1, K1))
+        )  # <C1, C2, K1, K1>      # doc: (in_channels, out_channels,kH,kW)
+        # ConvT the two kernels
+        composed_kernel = conv_transpose2d(
+            inputs, weights, stride=STRIDE, padding=PADDING
+        )  # <C * N * N, C2, H_out, W_out> .   # doc: (bachdim,C_out,H_out,W_out)
+        composed_kernel = composed_kernel.reshape(
+            C, N, N, ...
+        )  # <C, N, N, C2 * H_out * W_out>
+
+        # Compute and concat bias
+        bias_1 = cur_y_greater[:, :, :, 0]  # <C, N, N >
+        bias_2_flat_cube = (
+            prev_y_greater[:, 0, 0:1, 0:1].expand(C1, K, K).flatten()
+        )  # <C1 * K * K>
+        bias_2 = torch.matmul(inputs.flatten(-3, -1), bias_2_flat_cube).reshape(
+            C, N, N
+        )  # <C, N, N>
+        bias = bias_1 + bias_2  # <C, N, N>
+        composed_kernel_with_b = torch.cat((bias.unsqueeze(-1), composed_kernel), -1)
+
+        return ConvAbstractShape(
+            composed_kernel_with_b, composed_kernel_with_b, None, None
+        )
 
 
 def create_abstract_input_shape(inputs, eps):
@@ -195,6 +263,7 @@ def create_abstract_input_shape(inputs, eps):
         lower=torch.clamp(inputs - eps, 0, 1),
         upper=torch.clamp(inputs + eps, 0, 1),
     )
+
 
 def buildConstraints3DMatrix(
     current_layer_ashape: AbstractShape, previous_layer_ashape: AbstractShape
