@@ -17,6 +17,7 @@ from abstract_shape import (
     LinearAbstractShape,
     ConvAbstractShape,
     Relu2DAbstractShape,
+    create_abstract_input_shape
 )
 
 
@@ -105,8 +106,9 @@ class AbstractNormalize:
 
 
 class AbstractReLU:
-    def __init__(self) -> None:
+    def __init__(self, alpha_init='rand') -> None:
         self.alphas: Tensor = None  # Updated during forward pass
+        self.alpha_init = alpha_init
 
     def forward(self, x: AbstractShape):
         if isinstance(x, LinearAbstractShape):
@@ -121,25 +123,30 @@ class AbstractReLU:
                 flat_ashape.lower.reshape(*x.upper.shape),
                 flat_ashape.upper.reshape(*x.upper.shape),
             )
+        else:
+            raise Exception("unsupported input type for relu abstract transformer")
 
     def flat_forward(self, u_i, l_i):
-        # Given u_i.shape = [1,n]
-        # output AbstrcatLayer shapes:
-        #
-        # u_j.shape = l_j.shape = [n]
-        # a_greater_j = [n, 1] (list of alphas, now all alphas = 0)
-        # a_less_j = [n, 2] (list of linear coeff, [b,a]: b + ax)
+        """
+        Given u_i.shape = [1,n] output AbstrcatLayer shapes:
+        
+        u_j.shape = l_j.shape = [n]
+        a_greater_j = [n, 1] (list of alphas, now all alphas = 0)
+        a_less_j = [n, 2] (list of linear coeff, [b,a]: b + ax)
+        """
 
         zero_ones = torch.stack((torch.zeros_like(u_i), torch.ones_like(u_i)), dim=0)
-        # zero_ones = torch.stack((torch.zeros_like(u_i), torch.ones_like(u_i)), dim=0)
         zero_zeros = torch.zeros_like(zero_ones)
         ones = torch.ones_like(u_i)
         zeros = torch.zeros_like(u_i)
         if self.alphas is None:
-            self.alphas = torch.rand_like(u_i, requires_grad=True)  # .requires_grad_()
-        # else:
-        #     self._clip_alphas()
-        #     self.alphas#.requires_grad_()
+            if self.alpha_init == 'rand':
+                self.alphas = torch.rand_like(u_i, requires_grad=True)  # .requires_grad_()
+            elif self.alpha_init == 'zeros':
+                self.alphas = torch.zeros_like(u_i, requires_grad=True)
+            else:
+                raise Exception("Alpha intialization type not recognized")    
+
         # strictly negative: zero out
         stricly_negative = u_i <= 0
         u_j = torch.where(stricly_negative, zeros, u_i)
@@ -157,7 +164,6 @@ class AbstractReLU:
         # crossing: keep upperbound, lowerbound at zero, greater_than zero, less than slope
         crossing = (l_i <= 0) & (u_i >= 0)
         slope = u_i / (u_i - l_i)
-        # print("slope", u_i, l_i, slope)
         u_j = torch.where(crossing, u_i, u_j)
         l_j = torch.where(crossing, torch.zeros_like(l_i), l_j)
         lin_constr = torch.stack((-1 * l_i, ones), dim=0)
@@ -176,7 +182,8 @@ class AbstractReLU:
 
 class AbstractConvolution:
     def __init__(self, convLayer: torch.nn.Conv2d) -> None:
-        self.kernel: Tensor = convLayer.weight  # [c_out, c_in, k_h, k_w]
+        self.kernel: Tensor = convLayer.weight.data  # [c_out, c_in, k_h, k_w]
+        self.bias = convLayer.bias.data
         self.k_w: int = self.kernel.shape[3]
         self.k_h: int = self.kernel.shape[2]
         assert convLayer.kernel_size == (self.k_h, self.k_w)
@@ -185,6 +192,7 @@ class AbstractConvolution:
         self.stride: tuple(int, int) = convLayer.stride
         self.padding: tuple(int, int) = convLayer.padding
         self.dilation: tuple(int, int) = convLayer.dilation
+        self.N = None
 
     def forward(
         self,
@@ -196,10 +204,14 @@ class AbstractConvolution:
         # upper: tensor if shape <C, N N>
 
         # assert x.y_greater.dim == 3
+        self.N = conv_output_shape(
+                tuple(x.lower.shape[1:]), (self.k_h, self.k_w), self.stride,
+                self.padding)[0]
+
         x_greater = x.y_greater
         x_less = x.y_less
-        x_l = x.lower
-        x_u = x.upper
+        x_l = x.lower.unsqueeze(0)
+        x_u = x.upper.unsqueeze(0)
 
         w_in = x_l.shape[-1]
         h_in = x_l.shape[-2]
@@ -241,17 +253,19 @@ class AbstractConvolution:
         )  # [self.c_out, n_possible_kernel_positions, self.w * self.h * self.c_in]
 
         new_l = torch.sum(l_cube * k_flat, dim=-1).view(
-            1, self.c_out, h_out, w_out
+            self.c_out, h_out, w_out
         )  # [self.c_out, h_out, w_out]
         new_u = torch.sum(u_cube * k_flat, dim=-1).view(
-            1, self.c_out, h_out, w_out
+            self.c_out, h_out, w_out
         )  # [self.c_out, h_out, w_out]
 
-        # TODO: = kernel flattened
-        y_greater = None
-        y_less = None
+        y_greater_one_neuron = torch.concat([self.bias.unsqueeze(1), 
+                self.kernel.flatten(start_dim=1)], axis=1).unsqueeze(1).unsqueeze(1)
+        y_greater = y_greater_one_neuron.repeat(1, self.N, self.N, 1)
 
-        return ConvAbstractShape(None, None, new_l, new_u)
+        y_less = y_greater.clone()
+        
+        return ConvAbstractShape(y_greater, y_less, new_l, new_u)
 
     def _compute_new_l_i(self, x_l_i, x_u_i):
         x_l_i  # shape: (C_in,self.h,self.w)
@@ -266,49 +280,41 @@ class AbstractConvolution:
         return l_i
 
 
-# # To be used for backsubstitution
-# class AbstractReLU:
-#     def __init__(self) -> None:
-#         pass
-
-#     def forward(self, x: AbstractShape):
-#         u_i = x.upper
-#         l_i = x.lower
-#         a_less_i = x.y_less
-#         a_greater_i = x.y_greater
-#         # strictly negative: zero out
-#         stricly_negative = u_i <= 0
-#         u_j = torch.where(stricly_negative, torch.zeros_like(u_i), u_i)
-#         l_j = torch.where(stricly_negative, torch.zeros_like(l_i), l_i)
-#         a_less_j = torch.where(stricly_negative, torch.zeros_like(u_i), a_less_i)
-#         a_greater_j = torch.where(stricly_negative, torch.zeros_like(u_i), a_greater_i)
-
-#         # strictly positive: return unchanged
-#         stricly_positive = l_i >= 0
-#         u_j = torch.where(stricly_positive, u_i, u_j)
-#         l_j = torch.where(stricly_positive, l_i, l_j)
-#         a_less_j = torch.where(stricly_positive, a_less_i, a_less_j)
-#         a_greater_j = torch.where(stricly_positive, a_greater_i, a_greater_j)
-
-#         # crossing: keep upperbound, lowerbound at zero, greater_than zero, less than slope
-#         crossing = (l_i <= 0) & (u_i >= 0)
-#         slope = u_i / (u_i - l_i)
-#         u_j = torch.where(crossing, u_i, u_j)
-#         l_j = torch.where(crossing, torch.zeros_like(l_i), l_j)
-#         a_less_j = torch.where(crossing, slope * (a_greater_i - l_i), a_greater_j)
-#         a_greater_j = torch.where(crossing, torch.zeros_like(u_i), a_less_j)
-#         #a_greater_j = torch.where(crossing, alpha * a_greater_i, a_greater_j)
-
-#         return AbstractShape(a_greater_j, a_less_j, u_j, l_j)
-
+def conv_output_shape(h_w, kernel_size=1, stride=1, pad=0, dilation=1):
+    """
+    Utility function for computing output of convolutions
+    takes a tuple of (h,w) and returns a tuple of (h,w)
+    """
+    
+    if type(h_w) is not tuple:
+        h_w = (h_w, h_w)
+    
+    if type(kernel_size) is not tuple:
+        kernel_size = (kernel_size, kernel_size)
+    
+    if type(stride) is not tuple:
+        stride = (stride, stride)
+    
+    if type(pad) is not tuple:
+        pad = (pad, pad)
+    
+    h = (h_w[0] + (2 * pad[0]) - (dilation * (kernel_size[0] - 1)) - 1)// stride[0] + 1
+    w = (h_w[1] + (2 * pad[1]) - (dilation * (kernel_size[1] - 1)) - 1)// stride[1] + 1
+    
+    return h, w
 
 def main():
-    weights = torch.tensor([[0, 1, 2], [-1, -2, 1]])
-    linear = nn.Linear(5, 5)
-    AbstractLinear(weights)
-    AbstractLinear(linear)
-    AbstractLinear(2)
+    layer = torch.nn.Conv2d(1, 16, (4,4), 2, 1)
+    a_layer = AbstractConvolution(layer)
+    img = torch.ones((1, 28, 28))
+    a_shape = create_abstract_input_shape(img, 0.1)
 
+    out = a_layer.forward(a_shape)
+
+    assert out.y_greater.shape == (16, 14, 14, 17)
+    assert out.y_less.shape == (16, 14, 14, 17)
+    assert out.upper.shape == (16, 14, 14)
+    assert out.lower.shape == (16, 14, 14)
 
 if __name__ == "__main__":
     main()
