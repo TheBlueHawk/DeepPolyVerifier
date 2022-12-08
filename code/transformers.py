@@ -127,15 +127,15 @@ class AbstractReLU:
             raise Exception("unsupported input type for relu abstract transformer")
 
     def flat_forward(self, u_i, l_i):
-        # Given u_i.shape = [1,n]
-        # output AbstrcatLayer shapes:
-        #
-        # u_j.shape = l_j.shape = [n]
-        # a_greater_j = [n, 1] (list of alphas, now all alphas = 0)
-        # a_less_j = [n, 2] (list of linear coeff, [b,a]: b + ax)
+        """
+        Given u_i.shape = [1,n] output AbstrcatLayer shapes:
+        
+        u_j.shape = l_j.shape = [n]
+        a_greater_j = [n, 1] (list of alphas, now all alphas = 0)
+        a_less_j = [n, 2] (list of linear coeff, [b,a]: b + ax)
+        """
 
         zero_ones = torch.stack((torch.zeros_like(u_i), torch.ones_like(u_i)), dim=0)
-        # zero_ones = torch.stack((torch.zeros_like(u_i), torch.ones_like(u_i)), dim=0)
         zero_zeros = torch.zeros_like(zero_ones)
         ones = torch.ones_like(u_i)
         zeros = torch.zeros_like(u_i)
@@ -147,9 +147,6 @@ class AbstractReLU:
             else:
                 raise Exception("Alpha intialization type not recognized")    
 
-        # else:
-        #     self._clip_alphas()
-        #     self.alphas#.requires_grad_()
         # strictly negative: zero out
         stricly_negative = u_i <= 0
         u_j = torch.where(stricly_negative, zeros, u_i)
@@ -167,7 +164,6 @@ class AbstractReLU:
         # crossing: keep upperbound, lowerbound at zero, greater_than zero, less than slope
         crossing = (l_i <= 0) & (u_i >= 0)
         slope = u_i / (u_i - l_i)
-        # print("slope", u_i, l_i, slope)
         u_j = torch.where(crossing, u_i, u_j)
         l_j = torch.where(crossing, torch.zeros_like(l_i), l_j)
         lin_constr = torch.stack((-1 * l_i, ones), dim=0)
@@ -282,42 +278,6 @@ class AbstractConvolution:
             conv.reshape(self.c_out, -1)
         )  # shape: (C_out,C_in * self.h * self.w)
         return l_i
-
-
-# # To be used for backsubstitution
-# class AbstractReLU:
-#     def __init__(self) -> None:
-#         pass
-
-#     def forward(self, x: AbstractShape):
-#         u_i = x.upper
-#         l_i = x.lower
-#         a_less_i = x.y_less
-#         a_greater_i = x.y_greater
-#         # strictly negative: zero out
-#         stricly_negative = u_i <= 0
-#         u_j = torch.where(stricly_negative, torch.zeros_like(u_i), u_i)
-#         l_j = torch.where(stricly_negative, torch.zeros_like(l_i), l_i)
-#         a_less_j = torch.where(stricly_negative, torch.zeros_like(u_i), a_less_i)
-#         a_greater_j = torch.where(stricly_negative, torch.zeros_like(u_i), a_greater_i)
-
-#         # strictly positive: return unchanged
-#         stricly_positive = l_i >= 0
-#         u_j = torch.where(stricly_positive, u_i, u_j)
-#         l_j = torch.where(stricly_positive, l_i, l_j)
-#         a_less_j = torch.where(stricly_positive, a_less_i, a_less_j)
-#         a_greater_j = torch.where(stricly_positive, a_greater_i, a_greater_j)
-
-#         # crossing: keep upperbound, lowerbound at zero, greater_than zero, less than slope
-#         crossing = (l_i <= 0) & (u_i >= 0)
-#         slope = u_i / (u_i - l_i)
-#         u_j = torch.where(crossing, u_i, u_j)
-#         l_j = torch.where(crossing, torch.zeros_like(l_i), l_j)
-#         a_less_j = torch.where(crossing, slope * (a_greater_i - l_i), a_greater_j)
-#         a_greater_j = torch.where(crossing, torch.zeros_like(u_i), a_less_j)
-#         #a_greater_j = torch.where(crossing, alpha * a_greater_i, a_greater_j)
-
-#         return AbstractShape(a_greater_j, a_less_j, u_j, l_j)
 
 
 def conv_output_shape(h_w, kernel_size=1, stride=1, pad=0, dilation=1):
