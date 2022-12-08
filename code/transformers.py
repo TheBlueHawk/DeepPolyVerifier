@@ -263,8 +263,6 @@ class AbstractConvolution:
             self.c_out, h_out, w_out
         )  # [self.c_out, h_out, w_out]
 
-        # y_greater = torch.empty((self.c_out, self.N, self.N,
-        #                         1 + self.c_in * self.k_h * self.k_w))
         y_greater_one_neuron = torch.concat([self.bias.unsqueeze(1), 
                 self.kernel.flatten(start_dim=1)], axis=1).unsqueeze(1).unsqueeze(1)
         y_greater = y_greater_one_neuron.repeat(1, self.N, self.N, 1)
