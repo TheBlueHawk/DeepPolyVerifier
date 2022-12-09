@@ -234,7 +234,7 @@ class ConvAbstractShape(AbstractShape):
         )  # <C1, C2, K1, K1>      # doc: (in_channels, out_channels,kH,kW)
         # ConvT the two kernels
         composed_kernel = conv_transpose2d(
-            inputs, weights, stride=1, padding=0
+            inputs, weights, stride=STRIDE, padding=PADDING
         )  # <C * N * N, C2, H_out, W_out> .   # doc: (bachdim,C_out,H_out,W_out)
         composed_kernel = composed_kernel.reshape(
             C, N, N, -1
