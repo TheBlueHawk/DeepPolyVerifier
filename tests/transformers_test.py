@@ -3,8 +3,17 @@ import pytest
 
 sys.path.append("./code")
 
-from abstract_shape import AbstractShape, create_abstract_input_shape, LinearAbstractShape
-from transformers import AbstractLinear, AbstractReLU, AbstractNormalize, AbstractConvolution
+from abstract_shape import (
+    AbstractShape,
+    create_abstract_input_shape,
+    LinearAbstractShape,
+)
+from transformers import (
+    AbstractLinear,
+    AbstractReLU,
+    AbstractNormalize,
+    AbstractConvolution,
+)
 import torch
 
 
@@ -24,7 +33,6 @@ def test_AbstractLinear():
     assert torch.allclose(out.upper, torch.tensor([3, 2]))
 
 
-@pytest.mark.skip(reason="fix in progress")
 def test_AbstrctReLU_crossing_1():
     aInput = LinearAbstractShape(
         torch.tensor([[0.0, 1.0, 1.0], [0.0, 1.0, -1.0]]),
@@ -32,7 +40,7 @@ def test_AbstrctReLU_crossing_1():
         torch.tensor([-2.0, -2.0]),
         torch.tensor([2.0, 2.0]),
     )
-    aReLU = AbstractReLU(alpha_init='zeros')
+    aReLU = AbstractReLU(alpha_init="zeros")
 
     out = aReLU.forward(aInput)
 
@@ -42,7 +50,6 @@ def test_AbstrctReLU_crossing_1():
     assert torch.allclose(out.upper, torch.tensor([2.0, 2.0]))
 
 
-@pytest.mark.skip(reason="fix in progress")
 def test_AbstrctReLU_crossing_2():
     aInput = LinearAbstractShape(
         torch.tensor([[-0.5, 1.0, 1.0], [0.0, 1.0, -1.0]]),
@@ -50,7 +57,7 @@ def test_AbstrctReLU_crossing_2():
         torch.tensor([-0.5, -2.0]),
         torch.tensor([2.5, 2.0]),
     )
-    aReLU = AbstractReLU(alpha_init='zeros')
+    aReLU = AbstractReLU(alpha_init="zeros")
 
     out = aReLU.forward(aInput)
 
@@ -78,7 +85,7 @@ def test_AbstractNormalize():
 
 
 def test_AbstractConvolution_shapes():
-    layer = torch.nn.Conv2d(1, 16, (4,4), 2, 1)
+    layer = torch.nn.Conv2d(1, 16, (4, 4), 2, 1)
     a_layer = AbstractConvolution(layer)
     img = torch.ones((1, 28, 28))
     a_shape = create_abstract_input_shape(img, 0.1)
