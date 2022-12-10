@@ -217,7 +217,7 @@ class ConvAbstractShape(AbstractShape):
         N1 = prev_y_greater.shape[1]
         K = int(sqrt((cur_y_greater.shape[3] - 1) / C1))
         K1 = K  # this is not the case in general but it holds for our networks
-        C2 = (prev_y_greater[3] - 1) / (K1**2)
+        C2 = int((prev_y_greater.shape[3] - 1) / (K1**2))
         PADDING = 1
         STRIDE = 2
 
@@ -227,7 +227,7 @@ class ConvAbstractShape(AbstractShape):
         )  # <C * N * N, C1, K, K> .         # doc: (minibatch,in_channels,iH,iW)
         # Separate bias, isolate kernel and reshape
         weights = (
-            cur_y_greater[:, 0, 0, 1:]  # same kernel for all pixels
+            prev_y_greater[:, 0, 0, 1:]  # same kernel for all pixels
             .squeeze(dim=1)
             .squeeze(dim=1)
             .reshape((C1, C2, K1, K1))
@@ -237,8 +237,10 @@ class ConvAbstractShape(AbstractShape):
             inputs, weights, stride=STRIDE, padding=PADDING
         )  # <C * N * N, C2, H_out, W_out> .   # doc: (bachdim,C_out,H_out,W_out)
         composed_kernel = composed_kernel.reshape(
-            C, N, N, ...
+            C, N, N, -1
         )  # <C, N, N, C2 * H_out * W_out>
+
+        # print(composed_kernel.shape)
 
         # Compute and concat bias
         bias_1 = cur_y_greater[:, :, :, 0]  # <C, N, N >

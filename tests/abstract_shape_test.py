@@ -1,11 +1,13 @@
 import torch
 import sys
+import pytest
 
 from torch import Tensor
 
 sys.path.append("./code")
 
 from abstract_shape import (
+    ConvAbstractShape,
     ReluAbstractShape,
     AbstractShape,
     buildConstraints3DMatrix,
@@ -101,3 +103,151 @@ def test_weightedLoss_1():
     tgt = Tensor([3.0])
     loss = weightedLoss(out, gamma)
     assert torch.allclose(loss, tgt)
+
+
+@pytest.mark.skip(reason="Test disabled since padding and stride are hardcoded to 2 and 1 instead of 1 and 0 as in these tests")
+def test_aconv_backsub_conv_1():
+    curr_eq = Tensor([-1, -1, 0, 1, 0]).reshape(1, 1, 1, 5)
+    curr_shape = ConvAbstractShape(curr_eq, curr_eq, None, None)
+    prev_eq = Tensor([1, 1, 0, 0, 1]).repeat(1, 2, 2, 1)
+    prev_shape = ConvAbstractShape(prev_eq, prev_eq, None, None)
+
+    out_shape = curr_shape.backsub_conv(prev_shape)
+    # print(out_shape.y_greater.shape)
+
+    tgt_eq = Tensor([-1, -1, 0, 0, 1, -1, 0, 0, 1, 0]).reshape(1, 1, 1, 10)
+    tgt_shape = ConvAbstractShape(tgt_eq, tgt_eq, None, None)
+    # print(tgt_shape.y_greater.shape)
+
+    # print(out_shape.y_greater)
+    # print(tgt_shape.y_greater)
+
+    assert torch.allclose(out_shape.y_greater, tgt_shape.y_greater)
+
+
+@pytest.mark.skip(reason="Test disabled since padding and stride are hardcoded to 2 and 1 instead of 1 and 0 as in these tests")
+def test_aconv_backsub_conv_2():
+    curr_eq = Tensor(
+        [
+            [1, 1, 1, 1, 1, 0, 0, 0, 0],
+            [0, 0, 0, 1, 1, 0, 0, 1, 1],
+            [-1, -1, 0, 0, 0, 0, 0, 0, 1],
+        ]
+    ).reshape(3, 1, 1, 9)
+    curr_shape = ConvAbstractShape(curr_eq, curr_eq, None, None)
+    prev_eq = (
+        Tensor(
+            [
+                [1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, -1, 0],
+                [-1, 0, -1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0],
+            ]
+        )
+        .reshape(2, 1, 1, 13)
+        .repeat(1, 2, 2, 1)
+    )
+    prev_shape = ConvAbstractShape(prev_eq, prev_eq, None, None)
+
+    out_shape = curr_shape.backsub_conv(prev_shape)
+    # print(out_shape.y_greater.shape)
+
+    tgt_eq = Tensor(
+        [
+            [
+                5,
+                0,
+                0,
+                0,
+                0,
+                1,
+                1,
+                0,
+                1,
+                1,
+                1,
+                1,
+                0,
+                1,
+                1,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                -1,
+                -1,
+                0,
+                -1,
+                -1,
+                0,
+            ],
+            [
+                0,
+                0,
+                0,
+                0,
+                0,
+                -1,
+                -1,
+                1,
+                2,
+                1,
+                0,
+                0,
+                0,
+                1,
+                1,
+                0,
+                1,
+                1,
+                0,
+                0,
+                0,
+                0,
+                0,
+                1,
+                1,
+                -1,
+                -1,
+                0,
+            ],
+            [
+                -3,
+                0,
+                0,
+                0,
+                0,
+                -1,
+                -1,
+                0,
+                1,
+                0,
+                -1,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                1,
+                0,
+                0,
+                0,
+            ],
+        ]
+    ).reshape(3, 1, 1, 28)
+    tgt_shape = ConvAbstractShape(tgt_eq, tgt_eq, None, None)
+    # print(tgt_shape.y_greater.shape)
+
+    print(out_shape.y_greater)
+    print(tgt_shape.y_greater)
+
+    assert torch.allclose(out_shape.y_greater, tgt_shape.y_greater)
