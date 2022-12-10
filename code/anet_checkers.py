@@ -1,3 +1,5 @@
+import torch
+
 class ANetChecker():
     def __init__(self, net):
         self.layers = net.layers
@@ -11,7 +13,7 @@ class ANetChecker():
             self.x = self.layers[self.current_layer](self.x)
 
         self.current_layer += 1
-        return self.x_in_ashape(self.x, abstract_shape)
+        assert self.x_in_ashape(self.x, abstract_shape)
 
     def x_in_ashape(self, x, abstract_shape):
         raise NotImplementedError()
@@ -25,7 +27,7 @@ class DummyANetChecker(ANetChecker):
         pass
 
     def check_next(self, abstract_shape):
-        return True
+        pass
 
 class InclusionANetChecker(ANetChecker):
     def x_in_ashape(self, x, abstract_shape):

@@ -112,7 +112,7 @@ class AbstractReLU:
 
     def forward(self, x: AbstractShape):
         if isinstance(x, LinearAbstractShape):
-            return self.flat_forward(x.upper, x.lower)
+            return self.flat_forward(x.lower, x.upper,)
         elif isinstance(x, ConvAbstractShape):
             lower = x.lower.flatten()
             upper = x.upper.flatten()
@@ -126,7 +126,7 @@ class AbstractReLU:
         else:
             raise Exception("unsupported input type for relu abstract transformer")
 
-    def flat_forward(self, u_i, l_i):
+    def flat_forward(self, l_i, u_i):
         """
         Given u_i.shape = [1,n] output AbstrcatLayer shapes:
         
