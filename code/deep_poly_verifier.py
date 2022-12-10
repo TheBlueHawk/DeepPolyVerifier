@@ -10,12 +10,13 @@ from abstract_networks import (
     AbstractNet5,
     AbstractNet6,
     AbstractNet7,
-    AbstractNetwork,
+    AbstractNetwork
+)
+from anet_checkers import (
     ANetChecker,
     DummyANetChecker,
     InclusionANetChecker
 )
-from transformers import AbstractLinear
 
 
 def get_anet_class_from_name(net_name) -> AbstractNetwork:
