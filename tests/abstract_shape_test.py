@@ -39,7 +39,7 @@ def test_alinear_backsub():
         torch.ones(2),
         -torch.ones(2),
     )
-    prev_shape = ReluAbstractShape(
+    prev_shape = LinearAbstractShape(
         2 * torch.ones(3, 5, dtype=torch.float32),
         torch.stack(
             [torch.zeros(5, dtype=torch.float32), torch.ones(5), -torch.ones(5)]

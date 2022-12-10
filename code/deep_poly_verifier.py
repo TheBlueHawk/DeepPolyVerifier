@@ -52,7 +52,7 @@ class DeepPolyVerifier:
         self.abstract_net = abstract_net_class(net, self.checker)
         self.N = 10
         self.gamma = 4
-        self.ALPHA_ITERS = 1
+        self.ALPHA_ITERS = 10
 
     def verify(self, inputs, eps, true_label) -> bool:
         """

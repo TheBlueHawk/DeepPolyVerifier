@@ -16,7 +16,7 @@ from abstract_shape import (
     ReluAbstractShape,
     LinearAbstractShape,
     ConvAbstractShape,
-    Relu2DAbstractShape,
+    FlattenAbstractShape,
     create_abstract_input_shape
 )
 
@@ -64,11 +64,12 @@ class AbstractFlatten:
     """Produces a compact version."""
 
     def forward(self, x: AbstractShape):
-        return AbstractShape(
+        return FlattenAbstractShape(
             None,
             None,
             x.lower.flatten(),
             x.upper.flatten(),
+            x.lower.shape
         )
 
 
@@ -117,7 +118,7 @@ class AbstractReLU:
             lower = x.lower.flatten()
             upper = x.upper.flatten()
             flat_ashape = self.flat_forward(lower, upper)
-            return Relu2DAbstractShape(
+            return ReluAbstractShape(
                 flat_ashape.y_greater.reshape(*x.upper.shape, 1),
                 flat_ashape.y_less.reshape(*x.upper.shape, 2),
                 flat_ashape.lower.reshape(*x.upper.shape),
@@ -292,7 +293,8 @@ class AbstractConvolution:
 
         y_less = y_greater.clone()
         
-        return ConvAbstractShape(y_greater, y_less, new_l, new_u)
+        return ConvAbstractShape(y_greater, y_less, new_l, new_u, self.c_in,
+                    self.k_w, self.padding, self.stride)
 
     def _compute_new_l_i(self, x_l_i, x_u_i):
         x_l_i  # shape: (C_in,self.h,self.w)
