@@ -84,8 +84,8 @@ class AbstractNormalize:
         self.sigma = sigma
 
     def _init_from_layer(self, layer):
-        self.mean = layer.mean
-        self.sigma = layer.sigma
+        self.mean = layer.mean.squeeze(0)
+        self.sigma = layer.sigma.squeeze(0)
 
     def forward(self, x: AbstractShape):
         # y_greater_one_neur = torch.tensor([-self.mean / self.sigma, 1 / self.sigma])
@@ -181,7 +181,31 @@ class AbstractReLU:
 
 
 class AbstractConvolution:
-    def __init__(self, convLayer: torch.nn.Conv2d) -> None:
+    def __init__(self, *args) -> None:
+        if isinstance(args[0], nn.Conv2d):
+            self._init_from_layer(*args)
+
+        elif isinstance(args[0], torch.Tensor):
+            self._init_from_tensor(*args)
+
+        else:
+            raise Exception(
+                "Invalid arguments passed to the initializer of AbstractLinear"
+            )
+
+    def _init_from_tensor(self, kernel, bias, stride, padding, dilation=(1,1)):
+        self.kernel: Tensor = kernel  # [c_out, c_in, k_h, k_w]
+        self.bias = bias
+        self.k_w: int = self.kernel.shape[3]
+        self.k_h: int = self.kernel.shape[2]
+        self.c_in: int = self.kernel.shape[1]
+        self.c_out: int = self.kernel.shape[0]
+        self.stride: tuple(int, int) = stride
+        self.padding: tuple(int, int) = padding
+        self.dilation: tuple(int, int) = dilation
+        self.N = None
+
+    def _init_from_layer(self, convLayer):
         self.kernel: Tensor = convLayer.weight.data  # [c_out, c_in, k_h, k_w]
         self.bias = convLayer.bias.data
         self.k_w: int = self.kernel.shape[3]
@@ -252,12 +276,15 @@ class AbstractConvolution:
             k_flat > 0, u_unfold.swapdims(-1, -2), l_unfold.swapdims(-1, -2)
         )  # [self.c_out, n_possible_kernel_positions, self.w * self.h * self.c_in]
 
+        expanded_bias = self.bias.reshape(-1, 1, 1).repeat(1, self.N, self.N,)
         new_l = torch.sum(l_cube * k_flat, dim=-1).view(
             self.c_out, h_out, w_out
         )  # [self.c_out, h_out, w_out]
+        new_l += expanded_bias
         new_u = torch.sum(u_cube * k_flat, dim=-1).view(
             self.c_out, h_out, w_out
         )  # [self.c_out, h_out, w_out]
+        new_u += expanded_bias
 
         y_greater_one_neuron = torch.concat([self.bias.unsqueeze(1), 
                 self.kernel.flatten(start_dim=1)], axis=1).unsqueeze(1).unsqueeze(1)
@@ -305,16 +332,52 @@ def conv_output_shape(h_w, kernel_size=1, stride=1, pad=0, dilation=1):
 
 def main():
     layer = torch.nn.Conv2d(1, 16, (4,4), 2, 1)
-    a_layer = AbstractConvolution(layer)
-    img = torch.ones((1, 28, 28))
-    a_shape = create_abstract_input_shape(img, 0.1)
+    c_out, c_in, h, w = 2, 2, 3, 3
+    kh, kw = 2, 2
+    padding = (0, 0)
+    stride = (1, 1)
+    kernel = torch.concat([
+        torch.arange(-5, 3).reshape(1,2,2,2), 
+        torch.arange(-2, 6).reshape(1,2,2,2)
+        ], axis=0)
+    bias = torch.tensor([2., 1])
 
-    out = a_layer.forward(a_shape)
+    img = torch.zeros(c_in, h, w)
+    img[:, 1, 1] += 1
+    img[0, 0, :] += 1
+    img[1, 1, :] += 1
+    a_transformer = AbstractConvolution(
+        kernel,
+        bias,
+        stride, padding
+    )
+    a_shape = create_abstract_input_shape(img, 1, bounds=(-10, 10))
 
-    assert out.y_greater.shape == (16, 14, 14, 17)
-    assert out.y_less.shape == (16, 14, 14, 17)
-    assert out.upper.shape == (16, 14, 14)
-    assert out.lower.shape == (16, 14, 14)
+    out = a_transformer.forward(a_shape)
+
+    
+    print("img", img, sep="\n")
+    print("a_shape.upper", a_shape.upper, sep="\n")
+    print("a_shape.lower", a_shape.lower, sep="\n")
+    print("kernel", kernel, sep="\n")
+    print("bias", bias, sep="\n")
+    print("upper", out.upper, sep="\n")
+    print("lower", out.lower, sep="\n")
+
+    assert torch.allclose(out.upper, torch.tensor([
+        [[14., 12],
+         [15, 13]],
+        [[31, 29],
+         [26, 24]],
+    ]))
+
+    assert torch.allclose(out.lower, torch.tensor([
+        [[-22., -24],
+         [-21, -23]],
+        [[-5, -7],
+         [-10, -12]],
+    ]))
+
 
 if __name__ == "__main__":
     main()

@@ -11,6 +11,9 @@ from abstract_networks import (
     AbstractNet6,
     AbstractNet7,
     AbstractNetwork,
+    ANetChecker,
+    DummyANetChecker,
+    InclusionANetChecker
 )
 from transformers import AbstractLinear
 
@@ -27,25 +30,45 @@ def get_anet_class_from_name(net_name) -> AbstractNetwork:
     }
     return abstract_nets[net_name]
 
+def get_checker_class_from_name(net_name) -> ANetChecker:
+    checkers = {
+        "net1": DummyANetChecker,
+        "net2": DummyANetChecker,
+        "net3": DummyANetChecker,
+        "net4": InclusionANetChecker,
+        "net5": DummyANetChecker,
+        "net6": DummyANetChecker,
+        "net7": DummyANetChecker,
+    }
+    return checkers[net_name]
 
 class DeepPolyVerifier:
     def __init__(self, net, net_name):
+        self.net = net
+        checker_class = get_checker_class_from_name(net_name)
+        self.checker = checker_class(net)
         abstract_net_class = get_anet_class_from_name(net_name)
-        self.abstract_net = abstract_net_class(net)
+        self.abstract_net = abstract_net_class(net, self.checker)
         self.N = 10
         self.gamma = 4
-        self.ALPHA_ITERS = 1000000
-        # self.ALPHA_ITERS = 10
+        self.ALPHA_ITERS = 1
 
     def verify(self, inputs, eps, true_label) -> bool:
+        """
+        
+        Args:
+            inputs: tensor of shape <channels, width, height>
+
+        Returns:
+            Boolean
+        """
         abstract_input = create_abstract_input_shape(inputs, eps)
+        self.checker.reset(inputs)
 
         for _ in range(self.ALPHA_ITERS):
-            # \\while True:
             final_abstract_shape = self.abstract_net.forward(
                 abstract_input, true_label, self.N
             )
-            # print(final_abstract_shape.lower)
             if verifyFinalShape(final_abstract_shape):
                 return True
             # Do just one step and then recompute the output
@@ -59,12 +82,6 @@ class DeepPolyVerifier:
             optim.step()
             alphas_clamped = [a.clamp(0, 1).detach().requires_grad_() for a in alphas]
             self.abstract_net.set_alphas(alphas_clamped)
-            # print(alphas)
-
-            # # TODO: do we need to detach??
-            # # input_gradient = [grad.detach() for grad in input_gradient]
-            # assert gradient.shape == alphas.shape
-            # self.abstract_net.set_alphas(alphas)
 
         return False
 

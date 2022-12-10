@@ -256,12 +256,12 @@ class ConvAbstractShape(AbstractShape):
         )
 
 
-def create_abstract_input_shape(inputs, eps):
+def create_abstract_input_shape(inputs, eps, bounds=(0,1)):
     return AbstractShape(
-        y_greater=torch.clamp(inputs - eps, 0, 1).unsqueeze(-1),
-        y_less=torch.clamp(inputs + eps, 0, 1).unsqueeze(-1),
-        lower=torch.clamp(inputs - eps, 0, 1),
-        upper=torch.clamp(inputs + eps, 0, 1),
+        y_greater=torch.clamp(inputs - eps, bounds[0], bounds[1]).unsqueeze(-1),
+        y_less=torch.clamp(inputs + eps, bounds[0], bounds[1]).unsqueeze(-1),
+        lower=torch.clamp(inputs - eps, bounds[0], bounds[1]),
+        upper=torch.clamp(inputs + eps, bounds[0], bounds[1]),
     )
 
 

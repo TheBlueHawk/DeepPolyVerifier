@@ -86,3 +86,79 @@ def test_AbstractConvolution_shapes():
     assert out.y_less.shape == (16, 14, 14, 17)
     assert out.upper.shape == (16, 14, 14)
     assert out.lower.shape == (16, 14, 14)
+
+def test_AbstractConvolution_1():
+    layer = torch.nn.Conv2d(1, 16, (4,4), 2, 1)
+    c_out, c_in, h, w = 2, 2, 3, 3
+    kh, kw = 2, 2
+    padding = (0, 0)
+    stride = (1, 1)
+    kernel = 1 + torch.arange(c_out * c_in * kh * kw).reshape(c_out, c_in, kh, kw)
+    bias = torch.tensor([2., 1])
+
+    img = torch.zeros(c_in, h, w)
+    img[:, 1, 1] += 1
+    img[0, 0, :] += 1
+    img[1, 1, :] += 1
+    a_transformer = AbstractConvolution(
+        kernel,
+        bias,
+        stride, padding
+    )
+    a_shape = create_abstract_input_shape(img, 0, bounds=(-10, 10))
+
+    out = a_transformer.forward(a_shape)
+
+    assert torch.allclose(out.y_greater,
+        torch.tensor(
+            [[2., 1, 2, 3, 4, 5, 6, 7, 8],
+            [1, 9, 10, 11, 12, 13, 14, 15, 16]]
+        ).unsqueeze(1).unsqueeze(1).repeat(1, 2, 2, 1)
+    )
+    assert torch.allclose(out.y_less, out.y_greater)
+    assert torch.allclose(out.upper, torch.tensor([
+        [[32., 30],
+         [21, 19]],
+        [[79, 77],
+         [52, 50]],
+    ]))
+    assert torch.allclose(out.lower, out.upper)
+
+def test_AbstractConvolution_2():
+    layer = torch.nn.Conv2d(1, 16, (4,4), 2, 1)
+    c_out, c_in, h, w = 2, 2, 3, 3
+    kh, kw = 2, 2
+    padding = (0, 0)
+    stride = (1, 1)
+    kernel = torch.concat([
+        torch.arange(-5, 3).reshape(1,2,2,2), 
+        torch.arange(-2, 6).reshape(1,2,2,2)
+        ], axis=0)
+    bias = torch.tensor([2., 1])
+
+    img = torch.zeros(c_in, h, w)
+    img[:, 1, 1] += 1
+    img[0, 0, :] += 1
+    img[1, 1, :] += 1
+    a_transformer = AbstractConvolution(
+        kernel,
+        bias,
+        stride, padding
+    )
+    a_shape = create_abstract_input_shape(img, 1, bounds=(-10, 10))
+
+    out = a_transformer.forward(a_shape)
+
+    assert torch.allclose(out.upper, torch.tensor([
+        [[14., 12],
+         [15, 13]],
+        [[31, 29],
+         [26, 24]],
+    ]))
+
+    assert torch.allclose(out.lower, torch.tensor([
+        [[-22., -24],
+         [-21, -23]],
+        [[-5, -7],
+         [-10, -12]],
+    ]))
