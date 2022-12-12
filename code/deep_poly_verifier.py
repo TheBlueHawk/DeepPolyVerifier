@@ -10,13 +10,9 @@ from abstract_networks import (
     AbstractNet5,
     AbstractNet6,
     AbstractNet7,
-    AbstractNetwork
+    AbstractNetwork,
 )
-from anet_checkers import (
-    ANetChecker,
-    DummyANetChecker,
-    InclusionANetChecker
-)
+from anet_checkers import ANetChecker, DummyANetChecker, InclusionANetChecker
 
 
 def get_anet_class_from_name(net_name) -> AbstractNetwork:
@@ -31,6 +27,7 @@ def get_anet_class_from_name(net_name) -> AbstractNetwork:
     }
     return abstract_nets[net_name]
 
+
 def get_checker_class_from_name(net_name) -> ANetChecker:
     checkers = {
         "net1": DummyANetChecker,
@@ -43,20 +40,21 @@ def get_checker_class_from_name(net_name) -> ANetChecker:
     }
     return checkers[net_name]
 
+
 class DeepPolyVerifier:
     def __init__(self, net, net_name):
         self.net = net
         checker_class = get_checker_class_from_name(net_name)
         self.checker = checker_class(net)
         abstract_net_class = get_anet_class_from_name(net_name)
-        self.abstract_net = abstract_net_class(net, self.checker)
+        # self.abstract_net = abstract_net_class(net, self.checker)
+        self.abstract_net = abstract_net_class(net)
         self.N = 10
         self.gamma = 4
         self.ALPHA_ITERS = 10
 
     def verify(self, inputs, eps, true_label) -> bool:
         """
-        
         Args:
             inputs: tensor of shape <channels, width, height>
 

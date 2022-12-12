@@ -81,11 +81,14 @@ class LinearAbstractShape(AbstractShape):
 
     def backsub_flatten(self, flatten_ashape):
         N, N12C1 = self.y_greater.shape[0], self.y_greater.shape[1]
+        # TODO: fix this: lower an upper are none, can they just be set to None in the new shape?
         return ConvAbstractShape(
             self.y_greater.reshape(N, 1, 1, N12C1),
             self.y_less.reshape(N, 1, 1, N12C1),
-            self.lower.reshape(N, 1, 1),
-            self.upper.reshape(N, 1, 1),
+            # self.lower.reshape(N, 1, 1),
+            # self.upper.reshape(N, 1, 1),
+            None,
+            None,
             c_in=flatten_ashape.original_shape[0],
             k=flatten_ashape.original_shape[1],
             padding=0,
@@ -262,16 +265,17 @@ class ConvAbstractShape(AbstractShape):
         cur_y_greater = self.y_greater  # <C, N, N, 1 + C1 * K * K>
         prev_y_greater = previous_conv_shape.y_greater  # <C1, N1, N1, 1 + C2 * K1 * K1>
         C = cur_y_greater.shape[0]
-        N = cur_y_greater.shape[1]
         C1 = prev_y_greater.shape[0]
-        N1 = prev_y_greater.shape[1]
-        K = self.k
-        K1 = (
-            previous_conv_shape.k
-        )  # this is not the case in general but it holds for our networks
         C2 = previous_conv_shape.c_in
-        PADDING = self.padding
-        STRIDE = self.stride
+        N = cur_y_greater.shape[1]
+        N1 = prev_y_greater.shape[1]
+        # we always use sqaured symmetric kernels
+        K = self.k
+        K1 = previous_conv_shape.k
+        S = self.stride
+        S1 = previous_conv_shape.stride
+        P = self.padding
+        P1 = previous_conv_shape.padding
 
         # Separate bias and reshape as <batchdim=C*N*N, kernel dims>
         inputs = cur_y_greater[:, :, :, 1:].reshape(
@@ -286,8 +290,9 @@ class ConvAbstractShape(AbstractShape):
         )  # <C1, C2, K1, K1>      # doc: (in_channels, out_channels,kH,kW)
         # ConvT the two kernels
         composed_kernel = conv_transpose2d(
-            inputs, weights, stride=STRIDE, padding=PADDING
+            inputs, weights, stride=S, padding=0
         )  # <C * N * N, C2, H_out, W_out> .   # doc: (bachdim,C_out,H_out,W_out)
+        K2 = composed_kernel.shape[-1]
         composed_kernel = composed_kernel.reshape(
             C, N, N, -1
         )  # <C, N, N, C2 * H_out * W_out>
@@ -298,23 +303,28 @@ class ConvAbstractShape(AbstractShape):
         bias_1 = cur_y_greater[:, :, :, 0]  # <C, N, N >
         bias_2_flat_cube = (
             prev_y_greater[:, 0, 0:1, 0:1].expand(C1, K, K).flatten()
-        )  # <C1 * K * K>
+        )  # <C1 * K * K> . # TODO: are we doing it right? Seems like the final shape would rather be <C1 * C1 * K * K>
         bias_2 = torch.matmul(inputs.flatten(-3, -1), bias_2_flat_cube).reshape(
             C, N, N
         )  # <C, N, N>
         bias = bias_1 + bias_2  # <C, N, N>
-        composed_kernel_with_b = torch.cat((bias.unsqueeze(-1), composed_kernel), -1)
+        composed_kernel_with_b = torch.cat(
+            (bias.unsqueeze(-1), composed_kernel), -1
+        )  # <C, N, N, C2 * H_out * W_out + 1>
 
-        # TODO: We never substitute more than two conv in a row, so this should be fine
+        # TODO: wrong, fix
+        S2 = S * S1  # should be right
+        P2 = P + S * P1  # wrong ?
+
         return ConvAbstractShape(
             composed_kernel_with_b,
             composed_kernel_with_b,
             None,
             None,
-            c_in=None,
-            k=None,
-            padding=None,
-            stride=None,
+            c_in=C2,
+            k=K2,
+            padding=P2,
+            stride=S2,
         )
 
 
@@ -334,7 +344,7 @@ class FlattenAbstractShape(AbstractShape):
         pass
 
 
-def create_abstract_input_shape(inputs, eps, bounds=(0, 1)):
+def create_abstract_input_shape(inputs, eps, bounds=(0, 1)) -> AbstractShape:
     return AbstractShape(
         y_greater=torch.clamp(inputs - eps, bounds[0], bounds[1]).unsqueeze(-1),
         y_less=torch.clamp(inputs + eps, bounds[0], bounds[1]).unsqueeze(-1),
