@@ -303,7 +303,7 @@ class ConvAbstractShape(AbstractShape):
         bias_1 = cur_y_greater[:, :, :, 0]  # <C, N, N >
         bias_2_flat_cube = (
             prev_y_greater[:, 0, 0:1, 0:1].expand(C1, K, K).flatten()
-        )  # <C1 * K * K> . # TODO: are we doing it right? Seems like the final shape would rather be <C1 * C1 * K * K>
+        )  # <C1 * K * K>
         bias_2 = torch.matmul(inputs.flatten(-3, -1), bias_2_flat_cube).reshape(
             C, N, N
         )  # <C, N, N>

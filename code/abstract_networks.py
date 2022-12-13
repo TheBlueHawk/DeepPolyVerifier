@@ -44,7 +44,7 @@ class AbstractNetwork:
             kernel = kernel.reshape(
                 kernel.shape[0], curr_ashape.c_in, curr_ashape.k, curr_ashape.k
             )  # <C * N * N, C2, composedK, composedK> = [c_out, c_in, k,k]
-            bias = curr_ashape.y_greater[:, :, :, 0].flatten()  # <C, N, N>
+            bias = curr_ashape.y_greater[:, :, :, 0].flatten()  # <C * N * N>
             temp_ashape = AbstractConvolution(
                 kernel,
                 bias,
@@ -52,26 +52,19 @@ class AbstractNetwork:
                 curr_ashape.padding,
             ).forward(previous_shapes[0])
 
-            new_u = (
-                temp_ashape.upper
-            )  # <C * N * N, N, N>  # not what we want ... probably two dims are duplicates
-            new_l = temp_ashape.lower  # <C * N * N, N, N>
-
+            new_u = temp_ashape.upper  # <C * N * N, N, N>  # overcomputation ...
+            new_l = temp_ashape.lower  # <C * N * N, N, N> # ... need to select idx
             new_N = new_u.shape[-1]
-
-            new_u = new_u.reshape(-1, new_N, new_N, new_N, new_N)
-            new_l = new_l.reshape(-1, new_N, new_N, new_N, new_N)
-
-            b1 = torch.allclose(new_u[:, 0, :, :, :], new_u[:, :, 0, :, :])  # False
-            b2 = torch.allclose(new_u[:, 0, :, :, :], new_u[:, :, :, 0, :])  # False
-            b3 = torch.allclose(new_u[:, 0, :, :, :], new_u[:, :, :, :, 0])  # False
-
-            ## WARNING: TODO wrong, just temp fix ###############################################
-            ## reshape the out channels TODO: how???? This is just a temp fix
-            new_u = new_u[:, 0, 0, :, :]
-            new_l = new_l[:, 0, 0, :, :]
-            ######################################################################################
-
+            new_u = (
+                new_u.reshape(-1, new_N, new_N, new_N, new_N)
+                .diagonal(dim1=1, dim2=3)
+                .diagonal(dim1=1, dim2=2)
+            )
+            new_l = (
+                new_l.reshape(-1, new_N, new_N, new_N, new_N)
+                .diagonal(dim1=1, dim2=3)
+                .diagonal(dim1=1, dim2=2)
+            )
             abstract_shape.upper = new_u
             abstract_shape.lower = new_l
         return abstract_shape
