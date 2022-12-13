@@ -34,9 +34,9 @@ def get_checker_class_from_name(net_name) -> ANetChecker:
         "net2": DummyANetChecker,
         "net3": DummyANetChecker,
         "net4": InclusionANetChecker,
-        "net5": DummyANetChecker,
-        "net6": DummyANetChecker,
-        "net7": DummyANetChecker,
+        "net5": InclusionANetChecker,
+        "net6": InclusionANetChecker,
+        "net7": InclusionANetChecker,
     }
     return checkers[net_name]
 
@@ -47,11 +47,11 @@ class DeepPolyVerifier:
         checker_class = get_checker_class_from_name(net_name)
         self.checker = checker_class(net)
         abstract_net_class = get_anet_class_from_name(net_name)
-        # self.abstract_net = abstract_net_class(net, self.checker)
-        self.abstract_net = abstract_net_class(net)
+        self.abstract_net = abstract_net_class(net, self.checker)
+        # self.abstract_net = abstract_net_class(net)
         self.N = 10
         self.gamma = 4
-        self.ALPHA_ITERS = 10
+        self.ALPHA_ITERS = 2
 
     def verify(self, inputs, eps, true_label) -> bool:
         """
@@ -70,6 +70,9 @@ class DeepPolyVerifier:
             )
             if verifyFinalShape(final_abstract_shape):
                 return True
+            
+            self.checker.reset(inputs)
+
             # Do just one step and then recompute the output
             # Alternatively could do multiple step with the existing mapping
             # from input neurons to bounds

@@ -65,6 +65,11 @@ class AbstractNetwork:
                 .diagonal(dim1=1, dim2=3)
                 .diagonal(dim1=1, dim2=2)
             )
+
+            if isinstance(abstract_shape, LinearAbstractShape):
+                new_u = torch.squeeze(new_u)
+                new_l = torch.squeeze(new_l)
+
             abstract_shape.upper = new_u
             abstract_shape.lower = new_l
         return abstract_shape
@@ -270,7 +275,6 @@ class AbstractNet4(AbstractNetwork):
     def forward(self, abstract_shape, true_label, N):
         self.final_atransformer = self.buildFinalLayer(true_label, N)
         prev_abstract_shapes = []
-
         self.checker.check_next(abstract_shape)
 
         # No need to backsub Normalization, it operates pointwise
@@ -288,8 +292,8 @@ class AbstractNet4(AbstractNetwork):
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.flatten.forward(abstract_shape)
-        prev_abstract_shapes.append(abstract_shape)
         self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.lin1.forward(abstract_shape)
         abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
@@ -322,7 +326,7 @@ class AbstractNet4(AbstractNetwork):
 
 
 class AbstractNet5(AbstractNetwork):
-    def __init__(self, net) -> None:
+    def __init__(self, net, checker) -> None:
         # Conv(device, "mnist", 28, 1, [(16, 4, 2, 1), (32, 4, 2, 1)], [100, 10], 10)
         self.normalize = AbstractNormalize(net.layers[0])
         self.conv1 = AbstractConvolution(net.layers[1])
@@ -335,43 +339,56 @@ class AbstractNet5(AbstractNetwork):
         self.lin2 = AbstractLinear(net.layers[8])
         self.final_atransformer = None  # built in forward
 
+        self.checker = checker
+
     def forward(self, abstract_shape, true_label, N):
         self.final_atransformer = self.buildFinalLayer(true_label, N)
         prev_abstract_shapes = []
-
+        self.checker.check_next(abstract_shape)
+        
         # No need to backsub Normalization, it operates pointwise
         abstract_shape = self.normalize.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
         # Won't get tighter l, u after backsubstituting the first linear layer
         abstract_shape = self.conv1.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.relu1.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.conv2.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.relu2.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.flatten.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.lin1.forward(abstract_shape)
         abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+        self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.relu3.forward(abstract_shape).expand()
+        self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.lin2.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.final_atransformer.forward(abstract_shape)
-        # abstract_shape = self.backsub(
-        #     abstract_shape, prev_abstract_shapes
-        # )
+        abstract_shape = self.backsub(
+            abstract_shape, prev_abstract_shapes
+        )
 
         return abstract_shape
 
@@ -390,7 +407,7 @@ class AbstractNet5(AbstractNetwork):
 
 
 class AbstractNet6(AbstractNetwork):
-    def __init__(self, net) -> None:
+    def __init__(self, net, checker) -> None:
         # Conv(device, "cifar10", 32, 3, [(16, 4, 2, 1), (32, 4, 2, 1)], [100, 10], 10)
         self.normalize = AbstractNormalize(net.layers[0])
         self.conv1 = AbstractConvolution(net.layers[1])
@@ -403,39 +420,51 @@ class AbstractNet6(AbstractNetwork):
         self.lin2 = AbstractLinear(net.layers[8])
         self.final_atransformer = None  # built in forward
 
+        self.checker = checker
+
     def forward(self, abstract_shape, true_label, N):
         self.final_atransformer = self.buildFinalLayer(true_label, N)
         prev_abstract_shapes = []
+        self.checker.check_next(abstract_shape)
 
         # No need to backsub Normalization, it operates pointwise
         abstract_shape = self.normalize.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
         # Won't get tighter l, u after backsubstituting the first linear layer
         abstract_shape = self.conv1.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.relu1.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.conv2.forward(abstract_shape)
         abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+        self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.relu2.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.flatten.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.lin1.forward(abstract_shape)
         abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+        self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.relu3.forward(abstract_shape).expand()
+        self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.lin2.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.final_atransformer.forward(abstract_shape)
@@ -458,7 +487,7 @@ class AbstractNet6(AbstractNetwork):
 
 
 class AbstractNet7(AbstractNetwork):
-    def __init__(self, net) -> None:
+    def __init__(self, net, checker) -> None:
         # Conv(device, "mnist", 28, 1, [(16, 4, 2, 1), (64, 4, 2, 1)], [100, 100, 10], 10)
         self.normalize = AbstractNormalize(net.layers[0])
         self.conv1 = AbstractConvolution(net.layers[1])
@@ -473,48 +502,64 @@ class AbstractNet7(AbstractNetwork):
         self.lin3 = AbstractLinear(net.layers[10])
         self.final_atransformer = None  # built in forward
 
+        self.checker = checker
+
     def forward(self, abstract_shape, true_label, N):
         self.final_atransformer = self.buildFinalLayer(true_label, N)
         prev_abstract_shapes = []
+        self.checker.check_next(abstract_shape)
 
         # No need to backsub Normalization, it operates pointwise
         abstract_shape = self.normalize.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
         # Won't get tighter l, u after backsubstituting the first linear layer
         abstract_shape = self.conv1.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.relu1.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.conv2.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.relu2.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.flatten.forward(abstract_shape)
-
-        abstract_shape = self.lin1.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
-        abstract_shape = self.relu3.forward(abstract_shape)
+        abstract_shape = self.lin1.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.relu3.forward(abstract_shape).expand()
+        self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.lin2.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
+
         abstract_shape = self.relu4.forward(abstract_shape).expand()
+        self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.lin3.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.final_atransformer.forward(abstract_shape)
-        # abstract_shape = self.backsub(
-        #     abstract_shape, prev_abstract_shapes
-        # )
+        abstract_shape = self.backsub(
+            abstract_shape, prev_abstract_shapes
+        )
 
         return abstract_shape
 

@@ -7,6 +7,7 @@ class ANetChecker():
 
     def reset(self, x):
         self.x = x
+        self.current_layer = -1
 
     def check_next(self, abstract_shape):
         if self.current_layer > -1:

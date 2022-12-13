@@ -241,6 +241,9 @@ class AbstractConvolution:
         # upper: tensor if shape <C, N N>
 
         # assert x.y_greater.dim == 3
+
+        # n_in = x.y_greater.shape[1]
+        n_in = 0
         self.N = conv_output_shape(
             tuple(x.lower.shape[1:]), (self.k, self.k), self.stride, self.padding
         )[0]
@@ -317,6 +320,7 @@ class AbstractConvolution:
             new_l,
             new_u,
             self.c_in,
+            n_in,
             self.k,
             self.padding,
             self.stride,
