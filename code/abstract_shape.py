@@ -173,6 +173,31 @@ class ConvAbstractShape(AbstractShape):
         self.padding = padding
         self.stride = stride
 
+    def zero_out_padding_weights(self):
+        # bitmask = torch.zeros(self.c_in, self.n_in + 2 * self.padding,
+        #                     self.n_in + 2 * self.padding)
+        bitmask = torch.ones(1, self.c_in, self.n_in, self.n_in)
+        C = self.y_greater.shape[0]
+        N = self.y_greater.shape[1]
+        # p = self.padding
+        # bitmask[:, p:-p, p:-p] = 1
+        unfolded_bitmask = F.unfold(
+            input=bitmask,
+            kernel_size=self.k,
+            dilation=1,
+            padding=self.padding,
+            stride=self.stride
+        )
+
+        unfolded_bitmask = unfolded_bitmask\
+                            .squeeze(dim=0)\
+                            .swapaxes(0, 1)\
+                            .reshape(N, N, -1)\
+                            .unsqueeze(0)
+
+        self.y_greater[..., 1:] *= unfolded_bitmask
+        self.y_less[..., 1:] *= unfolded_bitmask
+
     def backsub(self, previous_abstract_shape: AbstractShape) -> ConvAbstractShape:
         if isinstance(previous_abstract_shape, ReluAbstractShape):
             return self.backsub_relu(previous_abstract_shape)

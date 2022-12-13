@@ -86,10 +86,10 @@ class AbstractNormalize:
 
     def forward(self, x: AbstractShape) -> AbstractShape:
         # y_greater_one_neur = torch.tensor([-self.mean / self.sigma, 1 / self.sigma])
-        y_greater = None  # y_greater_one_neur.repeat((x.lower.shape[0], 1))
+        y_greater = torch.zeros(*x.y_greater.shape[:-1], 1)  # y_greater_one_neur.repeat((x.lower.shape[0], 1))
 
         # y_less_one_neur = torch.tensor([-self.mean / self.sigma, 1 / self.sigma])
-        y_less = None  # y_less_one_neur.repeat((x.lower.shape[0], 1))
+        y_less = torch.zeros(*x.y_greater.shape[:-1], 1)  # y_less_one_neur.repeat((x.lower.shape[0], 1))
 
         lower = (x.lower - self.mean) / self.sigma
         upper = (x.upper - self.mean) / self.sigma
@@ -242,8 +242,8 @@ class AbstractConvolution:
 
         # assert x.y_greater.dim == 3
 
-        # n_in = x.y_greater.shape[1]
-        n_in = 0
+        n_in = x.y_greater.shape[1]
+        # n_in = 0
         self.N = conv_output_shape(
             tuple(x.lower.shape[1:]), (self.k, self.k), self.stride, self.padding
         )[0]

@@ -14,8 +14,9 @@ class ANetChecker():
             self.x = self.layers[self.current_layer](self.x)
 
         self.current_layer += 1
-        assert self.x_in_ashape(self.x, abstract_shape)
-
+        
+        assert self.x_in_ashape(self.x.squeeze(0), abstract_shape), "Abstract shape doesn't contain the concrete point"
+    
     def x_in_ashape(self, x, abstract_shape):
         raise NotImplementedError()
 
@@ -32,5 +33,17 @@ class DummyANetChecker(ANetChecker):
 
 class InclusionANetChecker(ANetChecker):
     def x_in_ashape(self, x, abstract_shape):
-        return (torch.all(abstract_shape.lower <= x) and 
-                torch.all(x <= abstract_shape.upper))
+        bad_idx_l = abstract_shape.lower > x
+        bad_idx_u = abstract_shape.upper < x
+        
+        ret = (torch.all((abstract_shape.lower <= x) | torch.isclose(abstract_shape.lower, x)) and
+                torch.all((x <= abstract_shape.upper) | torch.isclose(abstract_shape.upper, x)))
+
+        if not ret:
+            pts = 5
+            torch.set_printoptions(precision=10)
+            print("bad lower x < l", x[bad_idx_l][:pts], abstract_shape.lower[bad_idx_l][:pts], sep='\n')
+            print("bad upper x > u", x[bad_idx_u][:pts], abstract_shape.upper[bad_idx_u][:pts], sep='\n')
+            torch.set_printoptions()
+
+        return ret

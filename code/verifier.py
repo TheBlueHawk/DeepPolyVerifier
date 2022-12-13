@@ -53,7 +53,6 @@ def get_net(net, net_name):
 
 def analyze(net, net_name, inputs, eps, true_label):
     verifier = DeepPolyVerifier(net, net_name)
-    inputs = inputs.squeeze(0)
     return verifier.verify(inputs, eps, true_label)
 
 

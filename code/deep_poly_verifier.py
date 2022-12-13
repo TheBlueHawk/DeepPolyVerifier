@@ -33,12 +33,24 @@ def get_checker_class_from_name(net_name) -> ANetChecker:
         "net1": DummyANetChecker,
         "net2": DummyANetChecker,
         "net3": DummyANetChecker,
-        "net4": InclusionANetChecker,
-        "net5": InclusionANetChecker,
-        "net6": InclusionANetChecker,
-        "net7": InclusionANetChecker,
+        "net4": DummyANetChecker,
+        "net5": DummyANetChecker,
+        "net6": DummyANetChecker,
+        "net7": DummyANetChecker,
     }
     return checkers[net_name]
+
+# def get_checker_class_from_name(net_name) -> ANetChecker:
+#     checkers = {
+#         "net1": InclusionANetChecker,
+#         "net2": InclusionANetChecker,
+#         "net3": InclusionANetChecker,
+#         "net4": InclusionANetChecker,
+#         "net5": InclusionANetChecker,
+#         "net6": InclusionANetChecker,
+#         "net7": InclusionANetChecker,
+#     }
+#     return checkers[net_name]
 
 
 class DeepPolyVerifier:
@@ -48,10 +60,9 @@ class DeepPolyVerifier:
         self.checker = checker_class(net)
         abstract_net_class = get_anet_class_from_name(net_name)
         self.abstract_net = abstract_net_class(net, self.checker)
-        # self.abstract_net = abstract_net_class(net)
         self.N = 10
         self.gamma = 4
-        self.ALPHA_ITERS = 2
+        self.ALPHA_ITERS = 5
 
     def verify(self, inputs, eps, true_label) -> bool:
         """
@@ -61,7 +72,7 @@ class DeepPolyVerifier:
         Returns:
             Boolean
         """
-        abstract_input = create_abstract_input_shape(inputs, eps)
+        abstract_input = create_abstract_input_shape(inputs.squeeze(0), eps)
         self.checker.reset(inputs)
 
         for _ in range(self.ALPHA_ITERS):
