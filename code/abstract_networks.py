@@ -359,6 +359,7 @@ class AbstractNet5(AbstractNetwork):
         abstract_shape = self.flatten.forward(abstract_shape)
 
         abstract_shape = self.lin1.forward(abstract_shape)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.relu3.forward(abstract_shape).expand()
@@ -428,6 +429,7 @@ class AbstractNet6(AbstractNetwork):
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.lin1.forward(abstract_shape)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.relu3.forward(abstract_shape).expand()
