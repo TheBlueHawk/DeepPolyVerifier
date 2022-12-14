@@ -28,29 +28,29 @@ def get_anet_class_from_name(net_name) -> AbstractNetwork:
     return abstract_nets[net_name]
 
 
-def get_checker_class_from_name(net_name) -> ANetChecker:
-    checkers = {
-        "net1": DummyANetChecker,
-        "net2": DummyANetChecker,
-        "net3": DummyANetChecker,
-        "net4": DummyANetChecker,
-        "net5": DummyANetChecker,
-        "net6": DummyANetChecker,
-        "net7": DummyANetChecker,
-    }
-    return checkers[net_name]
-
 # def get_checker_class_from_name(net_name) -> ANetChecker:
 #     checkers = {
-#         "net1": InclusionANetChecker,
-#         "net2": InclusionANetChecker,
-#         "net3": InclusionANetChecker,
-#         "net4": InclusionANetChecker,
-#         "net5": InclusionANetChecker,
-#         "net6": InclusionANetChecker,
-#         "net7": InclusionANetChecker,
+#         "net1": DummyANetChecker,
+#         "net2": DummyANetChecker,
+#         "net3": DummyANetChecker,
+#         "net4": DummyANetChecker,
+#         "net5": DummyANetChecker,
+#         "net6": DummyANetChecker,
+#         "net7": DummyANetChecker,
 #     }
 #     return checkers[net_name]
+
+def get_checker_class_from_name(net_name) -> ANetChecker:
+    checkers = {
+        "net1": InclusionANetChecker,
+        "net2": InclusionANetChecker,
+        "net3": InclusionANetChecker,
+        "net4": InclusionANetChecker,
+        "net5": InclusionANetChecker,
+        "net6": InclusionANetChecker,
+        "net7": InclusionANetChecker,
+    }
+    return checkers[net_name]
 
 
 class DeepPolyVerifier:
@@ -62,7 +62,7 @@ class DeepPolyVerifier:
         self.abstract_net = abstract_net_class(net, self.checker)
         self.N = 10
         self.gamma = 4
-        self.ALPHA_ITERS = 5
+        self.ALPHA_ITERS = 2
 
     def verify(self, inputs, eps, true_label) -> bool:
         """
@@ -87,14 +87,15 @@ class DeepPolyVerifier:
             # Do just one step and then recompute the output
             # Alternatively could do multiple step with the existing mapping
             # from input neurons to bounds
-            alphas = self.abstract_net.get_alphas()
-            optim = torch.optim.SGD(alphas, lr=1e-1)
-            optim.zero_grad()
-            loss = weightedLoss(final_abstract_shape.lower, self.gamma)
-            loss.backward()
-            optim.step()
-            alphas_clamped = [a.clamp(0, 1).detach().requires_grad_() for a in alphas]
-            self.abstract_net.set_alphas(alphas_clamped)
+            
+            # alphas = self.abstract_net.get_alphas()
+            # optim = torch.optim.SGD(alphas, lr=1e-1)
+            # optim.zero_grad()
+            # loss = weightedLoss(final_abstract_shape.lower, self.gamma)
+            # loss.backward()
+            # optim.step()
+            # alphas_clamped = [a.clamp(0, 1).detach().requires_grad_() for a in alphas]
+            # self.abstract_net.set_alphas(alphas_clamped)
 
         return False
 

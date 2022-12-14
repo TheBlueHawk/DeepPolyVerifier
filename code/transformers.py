@@ -65,7 +65,11 @@ class AbstractFlatten:
 
     def forward(self, x: AbstractShape) -> FlattenAbstractShape:
         return FlattenAbstractShape(
-            None, None, x.lower.flatten(), x.upper.flatten(), x.lower.shape
+            y_greater = None,
+            y_less = None,
+            lower = x.lower.flatten(),
+            upper = x.upper.flatten(),
+            original_shape = x.lower.shape
         )
 
 
@@ -141,7 +145,7 @@ class AbstractReLU:
         zeros = torch.zeros_like(u_i)
         if self.alphas is None:
             if self.alpha_init == "rand":
-                self.alphas = torch.rand_like(
+                self.alphas = 0.1 + 0.8*torch.rand_like(
                     u_i, requires_grad=True
                 )  # .requires_grad_()
             elif self.alpha_init == "zeros":

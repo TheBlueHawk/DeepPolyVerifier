@@ -66,22 +66,29 @@ class LinearAbstractShape(AbstractShape):
             raise TypeError(type(previous_abstract_shape))
 
     def backsub_linear(self, previous_abstract_shape):
-        greater_backsub_cube = buildConstraints3DMatrix(self, previous_abstract_shape)
+        greater_backsub_cube = buildConstraints3DMatrix(
+            self.y_less,
+            previous_abstract_shape.y_less,
+            previous_abstract_shape.y_greater
+        )
+        
         bias_greater = self.y_greater[:, 0]
         weights_greater = self.y_greater[:, 1:].unsqueeze(1)
         new_greater = (weights_greater @ greater_backsub_cube).squeeze()
         # Add existing bias to new bias
         new_greater[:, 0] += bias_greater
 
-        less_backsub_cube = buildConstraints3DMatrix(self, previous_abstract_shape)
+        less_backsub_cube = buildConstraints3DMatrix(
+            self.y_greater,
+            previous_abstract_shape.y_greater,
+            previous_abstract_shape.y_less
+        )
         bias_less = self.y_less[:, 0]
         weights_less = self.y_less[:, 1:].unsqueeze(1)
         new_less = (weights_less @ less_backsub_cube).squeeze()
         # Add existing bias to new bias
         new_less[:, 0] += bias_less
 
-        # TODO Not sure which abstract shape we will need here
-        # To update lower, upper, do a forward pass with the new weights
         return LinearAbstractShape(new_greater, new_less, None, None)
 
     def backsub_flatten(self, flatten_ashape):
@@ -373,7 +380,12 @@ class FlattenAbstractShape(AbstractShape):
         upper: Tensor,
         original_shape,
     ) -> None:
-        super().__init__(y_greater, y_less, lower, upper)
+        super().__init__(
+            y_greater=y_greater, 
+            y_less=y_less, 
+            lower=lower, 
+            upper=upper
+        )
         self.original_shape = original_shape
 
     def backsub(self, previous_abstract_shape):
@@ -390,26 +402,55 @@ def create_abstract_input_shape(inputs, eps, bounds=(0, 1)) -> AbstractShape:
 
 
 def buildConstraints3DMatrix(
-    current_layer_ashape: AbstractShape, previous_layer_ashape: AbstractShape
+    cur_weights: Tensor, fst_choice, snd_choice,
 ) -> Tensor:
-    curr_y_greater = current_layer_ashape.y_greater  # shape: [N, N1+1]
-    prev_y_greater = previous_layer_ashape.y_greater  # shape: [N1, N2+1]
-    prev_y_smaller = previous_layer_ashape.y_less  # shape: [N1, N2+1]
+    """
+    Where cur_weighs >= 0 takes fst_choice, otherwise takes snd_choice.
+
+    E.g, when building it for cur_weights = current_ashape.upper:
+        fst_choice = current_weights.upper
+        snd_choice = current_weights.lower
+    """
+    # curr_y_greater = current_layer_ashape.y_greater  # shape: [N, N1+1]
+    # prev_y_greater = previous_layer_ashape.y_greater  # shape: [N1, N2+1]
+    # prev_y_smaller = previous_layer_ashape.y_less  # shape: [N1, N2+1]
     # N = curr_y_greater.shape[0]  # n_neurons_current_layer
     # N1 = curr_y_greater.shape[1]  # n_neurons_prev_layer
     # N2 = prev_y_greater.shape[1]  # n_neurons_prev_prev_layer
     assert (
-        curr_y_greater.shape[1] - 1
-        == prev_y_smaller.shape[0]
-        == prev_y_greater.shape[0]
+        cur_weights.shape[1] - 1
+        == fst_choice.shape[0]
+        == snd_choice.shape[0]
     )
     # curr_b = curr_y_greater[:, 0].unsqueeze(1)  # shape: [N, 1, 1]
     # bias = torch.concat((curr_b, torch.zeros(N, N2, 1)), dim=1)  # shape: [N, N2+1, 1]
-    alphas = curr_y_greater[:, 1:].unsqueeze(1)  # shape: [N, 1, N1]
+    alphas = cur_weights[:, 1:].unsqueeze(1)  # shape: [N, 1, N1]
     cube = torch.where(
-        alphas.swapdims(1, 2) >= 0, prev_y_greater, prev_y_smaller
+        alphas.swapdims(1, 2) >= 0, fst_choice, snd_choice
     )  # shape: [N, N1, N2 + 1]
     return cube
+
+# def buildConstraints3DMatrix(
+#     current_layer_ashape: AbstractShape, previous_layer_ashape: AbstractShape
+# ) -> Tensor:
+#     curr_y_greater = current_layer_ashape.y_greater  # shape: [N, N1+1]
+#     prev_y_greater = previous_layer_ashape.y_greater  # shape: [N1, N2+1]
+#     prev_y_smaller = previous_layer_ashape.y_less  # shape: [N1, N2+1]
+#     # N = curr_y_greater.shape[0]  # n_neurons_current_layer
+#     # N1 = curr_y_greater.shape[1]  # n_neurons_prev_layer
+#     # N2 = prev_y_greater.shape[1]  # n_neurons_prev_prev_layer
+#     assert (
+#         curr_y_greater.shape[1] - 1
+#         == prev_y_smaller.shape[0]
+#         == prev_y_greater.shape[0]
+#     )
+#     # curr_b = curr_y_greater[:, 0].unsqueeze(1)  # shape: [N, 1, 1]
+#     # bias = torch.concat((curr_b, torch.zeros(N, N2, 1)), dim=1)  # shape: [N, N2+1, 1]
+#     alphas = curr_y_greater[:, 1:].unsqueeze(1)  # shape: [N, 1, N1]
+#     cube = torch.where(
+#         alphas.swapdims(1, 2) >= 0, prev_y_greater, prev_y_smaller
+#     )  # shape: [N, N1, N2 + 1]
+#     return cube
 
 
 def weightedLoss(output: Tensor, gamma: Double) -> Tensor:

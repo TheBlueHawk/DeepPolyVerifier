@@ -76,8 +76,9 @@ def test_buildConstraints3DMatrix_1():
     )
 
     cube = buildConstraints3DMatrix(
-        current_layer_ashape=cur_abstract_shape,
-        previous_layer_ashape=prev_abstract_shape,
+        cur_weights=cur_abstract_shape.y_greater,
+        fst_choice=prev_abstract_shape.y_greater,
+        snd_choice=prev_abstract_shape.y_less
     )
 
     tgt_cube = Tensor(
@@ -263,114 +264,114 @@ def test_aconv_backsub_conv_2():
 
     assert torch.allclose(out_shape.y_greater, tgt_shape.y_greater)
 
-def test_ConvAbstractShape_zero_out_padding():
-    curr_eq = torch.ones(2, 2, 2, 33)
-    curr_eq[...,0] = 0
-    curr_shape = ConvAbstractShape(
-        curr_eq, curr_eq, None, None, c_in=2, k=4, n_in=4, padding=1, stride=2
-    )
-    curr_shape.zero_out_padding_weights()
+# def test_ConvAbstractShape_zero_out_padding():
+#     curr_eq = torch.ones(2, 2, 2, 33)
+#     curr_eq[...,0] = 0
+#     curr_shape = ConvAbstractShape(
+#         curr_eq, curr_eq, None, None, c_in=2, k=4, n_in=4, padding=1, stride=2
+#     )
+#     curr_shape.zero_out_padding_weights()
 
-    print("y_greater")
-    print(curr_shape.y_greater, end='\n\n')
-    print("y_less")
-    print(curr_shape.y_less, end='\n\n')
-    print("y_greater[0,0]")
-    print(curr_shape.y_greater[0,0,0,1:].reshape(2, 10, 10))
-    print("y_greater[0,0] zeroed")
+#     print("y_greater")
+#     print(curr_shape.y_greater, end='\n\n')
+#     print("y_less")
+#     print(curr_shape.y_less, end='\n\n')
+#     print("y_greater[0,0]")
+#     print(curr_shape.y_greater[0,0,0,1:].reshape(2, 10, 10))
+#     print("y_greater[0,0] zeroed")
 
-def test_ConvAbstractShape_zero_out_padding_2():
-    curr_eq = torch.ones(2, 1, 1, 9)
-    curr_eq[...,0] = 0
-    curr_shape = ConvAbstractShape(
-        curr_eq, curr_eq, None, None, c_in=2, k=2, n_in=2, padding=0, stride=2
-    )
+# def test_ConvAbstractShape_zero_out_padding_2():
+#     curr_eq = torch.ones(2, 1, 1, 9)
+#     curr_eq[...,0] = 0
+#     curr_shape = ConvAbstractShape(
+#         curr_eq, curr_eq, None, None, c_in=2, k=2, n_in=2, padding=0, stride=2
+#     )
 
-    print("y_greater")
-    print(curr_shape.y_greater, end='\n\n')
-    print("y_less")
-    print(curr_shape.y_less, end='\n\n')
-    curr_shape.zero_out_padding_weights()
-    print("y_greater")
-    print(curr_shape.y_greater, end='\n\n')
-    print("y_less")
-    print(curr_shape.y_less, end='\n\n')
-    _ = 5
+#     print("y_greater")
+#     print(curr_shape.y_greater, end='\n\n')
+#     print("y_less")
+#     print(curr_shape.y_less, end='\n\n')
+#     curr_shape.zero_out_padding_weights()
+#     print("y_greater")
+#     print(curr_shape.y_greater, end='\n\n')
+#     print("y_less")
+#     print(curr_shape.y_less, end='\n\n')
+#     _ = 5
 
 
-def test_test_ConvAbstractShape_backsub_3():
-    curr_eq = torch.ones(2, 2, 2, 33)
-    curr_eq[...,0] = 0
-    curr_shape = ConvAbstractShape(
-        curr_eq, curr_eq, None, None, c_in=2, k=4, n_in=4, padding=1, stride=2
-    )
-    curr_shape.zero_out_padding_weights()
+# def test_test_ConvAbstractShape_backsub_3():
+#     curr_eq = torch.ones(2, 2, 2, 33)
+#     curr_eq[...,0] = 0
+#     curr_shape = ConvAbstractShape(
+#         curr_eq, curr_eq, None, None, c_in=2, k=4, n_in=4, padding=1, stride=2
+#     )
+#     curr_shape.zero_out_padding_weights()
 
-    prev_eq = torch.ones(2, 4, 4, 33)
-    prev_eq[...,0] = 0
-    prev_shape = ConvAbstractShape(
-        prev_eq, prev_eq, None, None, c_in=2, n_in=8, k=4, padding=1, stride=2
-    )
+#     prev_eq = torch.ones(2, 4, 4, 33)
+#     prev_eq[...,0] = 0
+#     prev_shape = ConvAbstractShape(
+#         prev_eq, prev_eq, None, None, c_in=2, n_in=8, k=4, padding=1, stride=2
+#     )
 
-    out_shape = curr_shape.backsub_conv(prev_shape)
+#     out_shape = curr_shape.backsub_conv(prev_shape)
 
-    print("y_greater")
-    print(out_shape.y_greater, end='\n\n')
-    print("y_less")
-    print(out_shape.y_less, end='\n\n')
-    print("y_greater[0,0]")
-    print(out_shape.y_greater[0,0,0,1:].reshape(2, 10, 10))
-    print("y_greater[0,0] zeroed")
-    # out_shape.zero_out_padding_weights()
-    print(out_shape.y_greater[0,0,0,1:].reshape(2, 10, 10))
-    _ = 5
+#     print("y_greater")
+#     print(out_shape.y_greater, end='\n\n')
+#     print("y_less")
+#     print(out_shape.y_less, end='\n\n')
+#     print("y_greater[0,0]")
+#     print(out_shape.y_greater[0,0,0,1:].reshape(2, 10, 10))
+#     print("y_greater[0,0] zeroed")
+#     # out_shape.zero_out_padding_weights()
+#     print(out_shape.y_greater[0,0,0,1:].reshape(2, 10, 10))
+#     _ = 5
 
-    anet = AbstractNetwork([])
-    input_shape = AbstractShape(
-        y_greater = torch.ones(2, 8, 8, 1),
-        y_less = -torch.ones(2, 8, 8, 1),
-        upper = torch.ones(2, 8, 8),
-        lower = -torch.ones(2, 8, 8)
-    )
-    new_bounds = anet.recompute_bounds_conv(input_shape, out_shape)
-    print(new_bounds[0], new_bounds[1], sep='\n')
+#     anet = AbstractNetwork([])
+#     input_shape = AbstractShape(
+#         y_greater = torch.ones(2, 8, 8, 1),
+#         y_less = -torch.ones(2, 8, 8, 1),
+#         upper = torch.ones(2, 8, 8),
+#         lower = -torch.ones(2, 8, 8)
+#     )
+#     new_bounds = anet.recompute_bounds_conv(input_shape, out_shape)
+#     print(new_bounds[0], new_bounds[1], sep='\n')
 
-def test_test_ConvAbstractShape_backsub_4():
-    curr_eq = torch.ones(2, 1, 1, 33)
-    curr_eq[...,0] = 0
-    curr_shape = ConvAbstractShape(
-        curr_eq, curr_eq, None, None, c_in=2, k=4, n_in=4, padding=1, stride=2
-    )
-    curr_shape.zero_out_padding_weights()
+# def test_test_ConvAbstractShape_backsub_4():
+#     curr_eq = torch.ones(2, 1, 1, 33)
+#     curr_eq[...,0] = 0
+#     curr_shape = ConvAbstractShape(
+#         curr_eq, curr_eq, None, None, c_in=2, k=4, n_in=4, padding=1, stride=2
+#     )
+#     curr_shape.zero_out_padding_weights()
 
-    prev_eq = torch.ones(2, 4, 4, 33)
-    prev_eq[...,0] = 0
-    prev_shape = ConvAbstractShape(
-        prev_eq, prev_eq, None, None, c_in=2, n_in=8, k=4, padding=1, stride=2
-    )
+#     prev_eq = torch.ones(2, 4, 4, 33)
+#     prev_eq[...,0] = 0
+#     prev_shape = ConvAbstractShape(
+#         prev_eq, prev_eq, None, None, c_in=2, n_in=8, k=4, padding=1, stride=2
+#     )
 
-    out_shape = curr_shape.backsub_conv(prev_shape)
+#     out_shape = curr_shape.backsub_conv(prev_shape)
 
-    print("y_greater")
-    print(out_shape.y_greater, end='\n\n')
-    print("y_less")
-    print(out_shape.y_less, end='\n\n')
-    print("y_greater[0,0]")
-    print(out_shape.y_greater[0,0,0,1:].reshape(2, 10, 10))
-    print("y_greater[0,0] zeroed")
-    # out_shape.zero_out_padding_weights()
-    print(out_shape.y_greater[0,0,0,1:].reshape(2, 10, 10))
-    _ = 5
+#     print("y_greater")
+#     print(out_shape.y_greater, end='\n\n')
+#     print("y_less")
+#     print(out_shape.y_less, end='\n\n')
+#     print("y_greater[0,0]")
+#     print(out_shape.y_greater[0,0,0,1:].reshape(2, 10, 10))
+#     print("y_greater[0,0] zeroed")
+#     # out_shape.zero_out_padding_weights()
+#     print(out_shape.y_greater[0,0,0,1:].reshape(2, 10, 10))
+#     _ = 5
 
-    anet = AbstractNetwork([])
-    input_shape = AbstractShape(
-        y_greater = torch.ones(2, 8, 8, 1),
-        y_less = -torch.ones(2, 8, 8, 1),
-        upper = torch.ones(2, 8, 8),
-        lower = -torch.ones(2, 8, 8)
-    )
-    new_bounds = anet.recompute_bounds_conv(input_shape, out_shape)
-    print(new_bounds[0], new_bounds[1], sep='\n')
+#     anet = AbstractNetwork([])
+#     input_shape = AbstractShape(
+#         y_greater = torch.ones(2, 8, 8, 1),
+#         y_less = -torch.ones(2, 8, 8, 1),
+#         upper = torch.ones(2, 8, 8),
+#         lower = -torch.ones(2, 8, 8)
+#     )
+#     new_bounds = anet.recompute_bounds_conv(input_shape, out_shape)
+#     print(new_bounds[0], new_bounds[1], sep='\n')
 
 
 def main():

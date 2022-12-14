@@ -15,7 +15,12 @@ class ANetChecker():
 
         self.current_layer += 1
         
-        assert self.x_in_ashape(self.x.squeeze(0), abstract_shape), "Abstract shape doesn't contain the concrete point"
+        if not self.x_in_ashape(self.x.squeeze(0), abstract_shape):
+            raise Exception("Abstract shape doesn't contain the concrete point")
+
+    def recheck(self, abstract_shape):
+        if not self.x_in_ashape(self.x.squeeze(0), abstract_shape):
+            raise Exception("Abstract shape doesn't contain the concrete point")
     
     def x_in_ashape(self, x, abstract_shape):
         raise NotImplementedError()
