@@ -98,11 +98,11 @@ def test_AbstractConvolution_shapes():
     assert out.lower.shape == (16, 14, 14)
 
 def test_AbstractConvolution_1():
-    layer = torch.nn.Conv2d(1, 16, (4,4), 2, 1)
+    layer = torch.nn.Conv2d(1, 16, 4, 2, 1)
     c_out, c_in, h, w = 2, 2, 3, 3
     kh, kw = 2, 2
-    padding = (0, 0)
-    stride = (1, 1)
+    padding = 0
+    stride = 1
     kernel = 1 + torch.arange(c_out * c_in * kh * kw).reshape(c_out, c_in, kh, kw)
     bias = torch.tensor([2., 1])
 
@@ -135,11 +135,11 @@ def test_AbstractConvolution_1():
     assert torch.allclose(out.lower, out.upper)
 
 def test_AbstractConvolution_2():
-    layer = torch.nn.Conv2d(1, 16, (4,4), 2, 1)
+    layer = torch.nn.Conv2d(1, 16, 4, 2, 1)
     c_out, c_in, h, w = 2, 2, 3, 3
     kh, kw = 2, 2
-    padding = (0, 0)
-    stride = (1, 1)
+    padding = 0
+    stride = 1
     kernel = torch.concat([
         torch.arange(-5, 3).reshape(1,2,2,2), 
         torch.arange(-2, 6).reshape(1,2,2,2)

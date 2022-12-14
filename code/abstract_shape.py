@@ -39,6 +39,11 @@ class AbstractShape:
         return f"{self.y_greater}\n{self.y_less}\n{self.lower}\n{self.upper}"
 
 
+class AbstractInputShape(AbstractShape):
+    def pad(self):
+        pass
+
+
 class LinearAbstractShape(AbstractShape):
     """The standard representation of the output of a linear abstract layer.
 
@@ -81,15 +86,19 @@ class LinearAbstractShape(AbstractShape):
 
     def backsub_flatten(self, flatten_ashape):
         N, N12C1 = self.y_greater.shape[0], self.y_greater.shape[1]
+        # TODO: fix this: lower an upper are none, can they just be set to None in the new shape?
         return ConvAbstractShape(
             self.y_greater.reshape(N, 1, 1, N12C1),
             self.y_less.reshape(N, 1, 1, N12C1),
-            self.lower.reshape(N, 1, 1),
-            self.upper.reshape(N, 1, 1),
+            # self.lower.reshape(N, 1, 1),
+            # self.upper.reshape(N, 1, 1),
+            None,
+            None,
             c_in=flatten_ashape.original_shape[0],
+            n_in=flatten_ashape.original_shape[1],
             k=flatten_ashape.original_shape[1],
             padding=0,
-            stride=1
+            stride=2,
         )
 
 
@@ -119,7 +128,9 @@ class ReluAbstractShape(AbstractShape):
         weights_less_expanded = torch.diag(weights_less)
         y_less = torch.cat([bias_less, weights_less_expanded], axis=1)
 
-        return LinearAbstractShape(y_greater, y_less, self.lower.clone(), self.upper.clone())
+        return LinearAbstractShape(
+            y_greater, y_less, self.lower.clone(), self.upper.clone()
+        )
 
     def backsub(self, previous_abstract_shape):
         expanded_self = self.expand()
@@ -149,13 +160,43 @@ class ConvAbstractShape(AbstractShape):
         y_less: Tensor,
         lower: Tensor,
         upper: Tensor,
-        c_in, k, padding, stride
+        c_in: int,
+        n_in: int,
+        k: int,
+        padding: int,
+        stride: int,
     ) -> None:
         super().__init__(y_greater, y_less, lower, upper)
         self.c_in = c_in
+        self.n_in = n_in
         self.k = k
         self.padding = padding
         self.stride = stride
+
+    def zero_out_padding_weights(self):
+        # bitmask = torch.zeros(self.c_in, self.n_in + 2 * self.padding,
+        #                     self.n_in + 2 * self.padding)
+        bitmask = torch.ones(1, self.c_in, self.n_in, self.n_in)
+        C = self.y_greater.shape[0]
+        N = self.y_greater.shape[1]
+        # p = self.padding
+        # bitmask[:, p:-p, p:-p] = 1
+        unfolded_bitmask = F.unfold(
+            input=bitmask,
+            kernel_size=self.k,
+            dilation=1,
+            padding=self.padding,
+            stride=self.stride
+        )
+
+        unfolded_bitmask = unfolded_bitmask\
+                            .squeeze(dim=0)\
+                            .swapaxes(0, 1)\
+                            .reshape(N, N, -1)\
+                            .unsqueeze(0)
+
+        self.y_greater[..., 1:] *= unfolded_bitmask
+        self.y_less[..., 1:] *= unfolded_bitmask
 
     def backsub(self, previous_abstract_shape: AbstractShape) -> ConvAbstractShape:
         if isinstance(previous_abstract_shape, ReluAbstractShape):
@@ -176,7 +217,7 @@ class ConvAbstractShape(AbstractShape):
         N1 = prev_y_greater.shape[1]
         C = cur_y_greater.shape[0]
         N = cur_y_greater.shape[1]
-        K = self.k # int(sqrt((cur_y_greater.shape[3] - 1) / C1))
+        K = self.k  # int(sqrt((cur_y_greater.shape[3] - 1) / C1))
         PADDING = self.padding
         STRIDE = self.stride
 
@@ -243,22 +284,33 @@ class ConvAbstractShape(AbstractShape):
         new_y_less = torch.cat([new_y_less_bias, new_y_less_w], axis=3)
 
         return ConvAbstractShape(
-            new_y_greater, new_y_less, None, None, 
-            c_in=self.c_in, k=self.k, padding=self.padding, stride=self.stride
+            new_y_greater,
+            new_y_less,
+            None,
+            None,
+            c_in=self.c_in,
+            n_in=self.n_in,
+            k=self.k,
+            padding=self.padding,
+            stride=self.stride,
         )
 
     def backsub_conv(self, previous_conv_shape: ConvAbstractShape) -> ConvAbstractShape:
         cur_y_greater = self.y_greater  # <C, N, N, 1 + C1 * K * K>
         prev_y_greater = previous_conv_shape.y_greater  # <C1, N1, N1, 1 + C2 * K1 * K1>
         C = cur_y_greater.shape[0]
-        N = cur_y_greater.shape[1]
         C1 = prev_y_greater.shape[0]
-        N1 = prev_y_greater.shape[1]
-        K = self.k
-        K1 = previous_conv_shape.k  # this is not the case in general but it holds for our networks
         C2 = previous_conv_shape.c_in
-        PADDING = self.padding
-        STRIDE = self.stride
+        N = cur_y_greater.shape[1]
+        N1 = prev_y_greater.shape[1]
+        N2 = previous_conv_shape.n_in
+        # we always use sqaured symmetric kernels
+        K = self.k
+        K1 = previous_conv_shape.k
+        S = self.stride
+        S1 = previous_conv_shape.stride
+        P = self.padding
+        P1 = previous_conv_shape.padding
 
         # Separate bias and reshape as <batchdim=C*N*N, kernel dims>
         inputs = cur_y_greater[:, :, :, 1:].reshape(
@@ -273,8 +325,9 @@ class ConvAbstractShape(AbstractShape):
         )  # <C1, C2, K1, K1>      # doc: (in_channels, out_channels,kH,kW)
         # ConvT the two kernels
         composed_kernel = conv_transpose2d(
-            inputs, weights, stride=STRIDE, padding=PADDING
+            inputs, weights, stride=S1, padding=0
         )  # <C * N * N, C2, H_out, W_out> .   # doc: (bachdim,C_out,H_out,W_out)
+        K2 = composed_kernel.shape[-1]
         composed_kernel = composed_kernel.reshape(
             C, N, N, -1
         )  # <C, N, N, C2 * H_out * W_out>
@@ -290,11 +343,26 @@ class ConvAbstractShape(AbstractShape):
             C, N, N
         )  # <C, N, N>
         bias = bias_1 + bias_2  # <C, N, N>
-        composed_kernel_with_b = torch.cat((bias.unsqueeze(-1), composed_kernel), -1)
+        composed_kernel_with_b = torch.cat(
+            (bias.unsqueeze(-1), composed_kernel), -1
+        )  # <C, N, N, C2 * H_out * W_out + 1>
+
+        # TODO: wrong, fix
+        S2 = S * S1  # should be right
+        P2 = P1 + S1 * P  # wrong ?
 
         return ConvAbstractShape(
-            composed_kernel_with_b, composed_kernel_with_b, None, None
+            composed_kernel_with_b,
+            composed_kernel_with_b,
+            None,
+            None,
+            c_in=C2,
+            n_in=N2,
+            k=K2,
+            padding=P2,
+            stride=S2,
         )
+
 
 class FlattenAbstractShape(AbstractShape):
     def __init__(
@@ -303,7 +371,7 @@ class FlattenAbstractShape(AbstractShape):
         y_less: Tensor,
         lower: Tensor,
         upper: Tensor,
-        original_shape
+        original_shape,
     ) -> None:
         super().__init__(y_greater, y_less, lower, upper)
         self.original_shape = original_shape
@@ -311,8 +379,9 @@ class FlattenAbstractShape(AbstractShape):
     def backsub(self, previous_abstract_shape):
         pass
 
-def create_abstract_input_shape(inputs, eps, bounds=(0,1)):
-    return AbstractShape(
+
+def create_abstract_input_shape(inputs, eps, bounds=(0, 1)) -> AbstractShape:
+    return AbstractInputShape(
         y_greater=torch.clamp(inputs - eps, bounds[0], bounds[1]).unsqueeze(-1),
         y_less=torch.clamp(inputs + eps, bounds[0], bounds[1]).unsqueeze(-1),
         lower=torch.clamp(inputs - eps, bounds[0], bounds[1]),

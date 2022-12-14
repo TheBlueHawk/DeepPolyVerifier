@@ -10,13 +10,9 @@ from abstract_networks import (
     AbstractNet5,
     AbstractNet6,
     AbstractNet7,
-    AbstractNetwork
+    AbstractNetwork,
 )
-from anet_checkers import (
-    ANetChecker,
-    DummyANetChecker,
-    InclusionANetChecker
-)
+from anet_checkers import ANetChecker, DummyANetChecker, InclusionANetChecker
 
 
 def get_anet_class_from_name(net_name) -> AbstractNetwork:
@@ -31,17 +27,31 @@ def get_anet_class_from_name(net_name) -> AbstractNetwork:
     }
     return abstract_nets[net_name]
 
+
 def get_checker_class_from_name(net_name) -> ANetChecker:
     checkers = {
         "net1": DummyANetChecker,
         "net2": DummyANetChecker,
         "net3": DummyANetChecker,
-        "net4": InclusionANetChecker,
+        "net4": DummyANetChecker,
         "net5": DummyANetChecker,
         "net6": DummyANetChecker,
         "net7": DummyANetChecker,
     }
     return checkers[net_name]
+
+# def get_checker_class_from_name(net_name) -> ANetChecker:
+#     checkers = {
+#         "net1": InclusionANetChecker,
+#         "net2": InclusionANetChecker,
+#         "net3": InclusionANetChecker,
+#         "net4": InclusionANetChecker,
+#         "net5": InclusionANetChecker,
+#         "net6": InclusionANetChecker,
+#         "net7": InclusionANetChecker,
+#     }
+#     return checkers[net_name]
+
 
 class DeepPolyVerifier:
     def __init__(self, net, net_name):
@@ -52,18 +62,17 @@ class DeepPolyVerifier:
         self.abstract_net = abstract_net_class(net, self.checker)
         self.N = 10
         self.gamma = 4
-        self.ALPHA_ITERS = 10
+        self.ALPHA_ITERS = 5
 
     def verify(self, inputs, eps, true_label) -> bool:
         """
-        
         Args:
             inputs: tensor of shape <channels, width, height>
 
         Returns:
             Boolean
         """
-        abstract_input = create_abstract_input_shape(inputs, eps)
+        abstract_input = create_abstract_input_shape(inputs.squeeze(0), eps)
         self.checker.reset(inputs)
 
         for _ in range(self.ALPHA_ITERS):
@@ -72,6 +81,9 @@ class DeepPolyVerifier:
             )
             if verifyFinalShape(final_abstract_shape):
                 return True
+            
+            self.checker.reset(inputs)
+
             # Do just one step and then recompute the output
             # Alternatively could do multiple step with the existing mapping
             # from input neurons to bounds
