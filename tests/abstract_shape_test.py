@@ -324,8 +324,9 @@ def test_aconv_backsub_relu():
 def test_recompute_bounds_conv():
     curr_eq_greater = torch.ones(1, 2, 2, 9)
     curr_eq_greater *= torch.arange(4).reshape(1, 2, 2, 1)
-    curr_eq_less = torch.ones(1, 2, 2, 9)
-    curr_eq_less *= (1+torch.arange(4)).reshape(1, 2, 2, 1)
+    curr_eq_greater[0,0,1,5:] -= 2
+    curr_eq_less = 2*torch.ones(1, 2, 2, 9)
+    curr_eq_less -= (1+torch.arange(4)).reshape(1, 2, 2, 1)
     curr_shape = ConvAbstractShape(
         curr_eq_greater,
         curr_eq_less,
@@ -337,18 +338,18 @@ def test_recompute_bounds_conv():
         torch.empty(2, 2, 2, 1),
         torch.empty(2, 2, 2, 1),
         torch.tensor([
-            [[0., 0],
-             [0, 0]],
+            [[0., -1],
+             [-2, 0]],
 
-            [[0, 0],
-             [0, 0]]
+            [[0, 1],
+             [0, 2]]
         ]),
         torch.tensor([
-            [[1., 1],
-             [1, 1]],
+            [[1., 2],
+             [-1, 1]],
 
-            [[1, 1],
-             [1, 1]]
+            [[2, 1],
+             [1, 3]]
         ])
     )
 
@@ -358,13 +359,13 @@ def test_recompute_bounds_conv():
     print("curr_shape", curr_shape, sep='\n', end='\n\n')
     
     assert torch.allclose(curr_shape.lower, torch.tensor([
-        [0., 1],
-        [2, 3]
+        [0., -1],
+        [-2, 9]
     ]))
 
     assert torch.allclose(curr_shape.upper, torch.tensor([
-        [3., 6],
-        [9, 12]
+        [4., 0],
+        [1, -6]
     ]))
 
 def main():
