@@ -36,7 +36,7 @@ class AbstractShape:
         pass
 
     def __str__(self):
-        return f"{self.y_greater}\n{self.y_less}\n{self.lower}\n{self.upper}"
+        return f"y_greater\n{self.y_greater}\ny_less\n{self.y_less}\nlower\n{self.lower}\nupper\n{self.upper}"
 
 
 class AbstractInputShape(AbstractShape):
@@ -67,9 +67,9 @@ class LinearAbstractShape(AbstractShape):
 
     def backsub_linear(self, previous_abstract_shape):
         greater_backsub_cube = buildConstraints3DMatrix(
-            self.y_less,
-            previous_abstract_shape.y_less,
-            previous_abstract_shape.y_greater
+            self.y_greater,
+            previous_abstract_shape.y_greater,
+            previous_abstract_shape.y_less
         )
         
         bias_greater = self.y_greater[:, 0]
@@ -79,10 +79,11 @@ class LinearAbstractShape(AbstractShape):
         new_greater[:, 0] += bias_greater
 
         less_backsub_cube = buildConstraints3DMatrix(
-            self.y_greater,
-            previous_abstract_shape.y_greater,
-            previous_abstract_shape.y_less
+            self.y_less,
+            previous_abstract_shape.y_less,
+            previous_abstract_shape.y_greater
         )
+        
         bias_less = self.y_less[:, 0]
         weights_less = self.y_less[:, 1:].unsqueeze(1)
         new_less = (weights_less @ less_backsub_cube).squeeze()

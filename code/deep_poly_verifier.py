@@ -62,7 +62,7 @@ class DeepPolyVerifier:
         self.abstract_net = abstract_net_class(net, self.checker)
         self.N = 10
         self.gamma = 4
-        self.ALPHA_ITERS = 2
+        self.ALPHA_ITERS = 1
 
     def verify(self, inputs, eps, true_label) -> bool:
         """
@@ -88,14 +88,14 @@ class DeepPolyVerifier:
             # Alternatively could do multiple step with the existing mapping
             # from input neurons to bounds
             
-            # alphas = self.abstract_net.get_alphas()
-            # optim = torch.optim.SGD(alphas, lr=1e-1)
-            # optim.zero_grad()
-            # loss = weightedLoss(final_abstract_shape.lower, self.gamma)
-            # loss.backward()
-            # optim.step()
-            # alphas_clamped = [a.clamp(0, 1).detach().requires_grad_() for a in alphas]
-            # self.abstract_net.set_alphas(alphas_clamped)
+            alphas = self.abstract_net.get_alphas()
+            optim = torch.optim.SGD(alphas, lr=1e-1)
+            optim.zero_grad()
+            loss = weightedLoss(final_abstract_shape.lower, self.gamma)
+            loss.backward()
+            optim.step()
+            alphas_clamped = [a.clamp(0, 1).detach().requires_grad_() for a in alphas]
+            self.abstract_net.set_alphas(alphas_clamped)
 
         return False
 

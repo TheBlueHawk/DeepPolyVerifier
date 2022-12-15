@@ -145,7 +145,7 @@ class AbstractReLU:
         zeros = torch.zeros_like(u_i)
         if self.alphas is None:
             if self.alpha_init == "rand":
-                self.alphas = 0.1 + 0.8*torch.rand_like(
+                self.alphas = torch.rand_like(
                     u_i, requires_grad=True
                 )  # .requires_grad_()
             elif self.alpha_init == "zeros":

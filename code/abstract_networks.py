@@ -19,41 +19,56 @@ class AbstractNetwork:
         self.abstract_transformers = abstract_transformers
 
     def recompute_bounds_linear(self, first_ashape, curr_ashape):
-        tmp_ashape_u = AbstractLinear(curr_ashape.y_greater).forward(
+        tmp_ashape_u = AbstractLinear(curr_ashape.y_less).forward(
             first_ashape
         )
-        tmp_ashape_l = AbstractLinear(curr_ashape.y_less).forward(
+        tmp_ashape_l = AbstractLinear(curr_ashape.y_greater).forward(
             first_ashape
         )
         return tmp_ashape_u.upper, tmp_ashape_l.lower
 
     def recompute_bounds_conv(self, first_ashape, curr_ashape):
-        # _init_from_tensor(self, kernel, bias, stride, padding, dilation=(1, 1)):
-        kernel = curr_ashape.y_greater[
+        kernel_lower = curr_ashape.y_greater[
             :, :, :, 1:
         ]  # <C, N, N, C2 * composedK * composedK>
-        kernel = kernel.flatten(0, 2)  # <C * N * N, C2 * composedK * composedK>
-        kernel = kernel.reshape(
-            kernel.shape[0], curr_ashape.c_in, curr_ashape.k, curr_ashape.k
+        kernel_lower = kernel_lower.flatten(0, 2)  # <C * N * N, C2 * composedK * composedK>
+        kernel_lower = kernel_lower.reshape(
+            kernel_lower.shape[0], curr_ashape.c_in, curr_ashape.k, curr_ashape.k
         )  # <C * N * N, C2, composedK, composedK> = [c_out, c_in, k,k]
         bias = curr_ashape.y_greater[:, :, :, 0].flatten()  # <C * N * N>
         temp_ashape = AbstractConvolution(
-            kernel,
+            kernel_lower,
             bias,
             curr_ashape.stride,
             curr_ashape.padding,
         ).forward(first_ashape)
-
-        new_u = temp_ashape.upper  # <C * N * N, N, N>  # overcomputation ...
         new_l = temp_ashape.lower  # <C * N * N, N, N> # ... need to select idx
-        new_N = new_u.shape[-1]
-        new_u = (
-            new_u.reshape(-1, new_N, new_N, new_N, new_N)
+        new_N = new_l.shape[-1]
+        new_l = (
+            new_l.reshape(-1, new_N, new_N, new_N, new_N)
             .diagonal(dim1=1, dim2=3)
             .diagonal(dim1=1, dim2=2)
         )
-        new_l = (
-            new_l.reshape(-1, new_N, new_N, new_N, new_N)
+
+
+        kernel_upper = curr_ashape.y_less[
+            :, :, :, 1:
+        ]  # <C, N, N, C2 * composedK * composedK>
+        kernel_upper = kernel_upper.flatten(0, 2)  # <C * N * N, C2 * composedK * composedK>
+        kernel_upper = kernel_upper.reshape(
+            kernel_upper.shape[0], curr_ashape.c_in, curr_ashape.k, curr_ashape.k
+        )  # <C * N * N, C2, composedK, composedK> = [c_out, c_in, k,k]
+        bias = curr_ashape.y_less[:, :, :, 0].flatten()  # <C * N * N>
+        temp_ashape = AbstractConvolution(
+            kernel_upper,
+            bias,
+            curr_ashape.stride,
+            curr_ashape.padding,
+        ).forward(first_ashape)
+        new_u = temp_ashape.upper  # <C * N * N, N, N>  # overcomputation ...
+        new_N = new_u.shape[-1]
+        new_u = (
+            new_u.reshape(-1, new_N, new_N, new_N, new_N)
             .diagonal(dim1=1, dim2=3)
             .diagonal(dim1=1, dim2=2)
         )
@@ -170,9 +185,9 @@ class AbstractNet2(AbstractNetwork):
         self.normalize = AbstractNormalize(net.layers[0])
         self.flatten = AbstractFlatten()
         self.lin1 = AbstractLinear(net.layers[2])
-        self.relu1 = AbstractReLU(alpha_init="zeros")
+        self.relu1 = AbstractReLU('zeros')
         self.lin2 = AbstractLinear(net.layers[4])
-        self.relu2 = AbstractReLU()
+        self.relu2 = AbstractReLU('zeros')
         self.lin3 = AbstractLinear(net.layers[6])
         self.final_atransformer = None  # built in forward
 
@@ -193,7 +208,7 @@ class AbstractNet2(AbstractNetwork):
         # Won't get tighter l, u after backsubstituting the first linear layer
         abstract_shape = self.lin1.forward(abstract_shape)
         self.checker.check_next(abstract_shape)
-        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes, check=True)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.relu1.forward(abstract_shape).expand()
