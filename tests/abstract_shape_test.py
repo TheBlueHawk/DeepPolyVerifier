@@ -319,7 +319,64 @@ def test_linear_backsub_relu():
     )
 
 def test_aconv_backsub_relu():
-    pass
+    curr_eq_greater = torch.ones(1, 2, 2, 9)
+    curr_eq_greater *= torch.arange(4).reshape(1, 2, 2, 1)
+    curr_eq_greater[0,0,1,5:] -= 2
+    curr_eq_less = 2*torch.ones(1, 2, 2, 9)
+    curr_eq_less -= (1 + torch.arange(4)).reshape(1, 2, 2, 1)
+    curr_conv_shape = ConvAbstractShape(
+        curr_eq_greater,
+        curr_eq_less,
+        torch.tensor([
+            [0, 0],
+            [2, 3]
+        ]), 
+        torch.tensor([
+            [4, 0],
+            [-1, -2]
+        ]),
+        c_in=2, n_in=2, k=2, padding=1, stride=2
+    )
+
+    prev_conv_shape = ConvAbstractShape(
+        torch.empty(2, 2, 2, 1),
+        torch.empty(2, 2, 2, 1),
+        torch.tensor([
+            [[-2., 1],
+             [0, -2]],
+
+            [[1, 1],
+             [-3, -1]]
+        ]),
+        torch.tensor([
+            [[-1., 2],
+             [1, 2]],
+
+            [[3, 2],
+             [-2, 1]]
+        ]),
+        c_in=2, n_in=2, k=2, padding=1, stride=2
+    )
+    
+    print("prev_conv_shape", prev_conv_shape, sep='\n', end='\n\n')
+    arelu_trans = AbstractReLU('zeros')
+    relu_ashape = arelu_trans.forward(prev_conv_shape)
+    print("relu_ashape", relu_ashape, sep='\n', end='\n\n')
+    print("curr_conv_shape", curr_conv_shape, sep='\n', end='\n\n')
+    new_ashape = curr_conv_shape.backsub(relu_ashape)
+    print("new_ashape", new_ashape, sep='\n', end='\n\n')
+    recompute_bounds(prev_conv_shape, new_ashape, curr_conv_shape)
+    print("curr_conv_shape", curr_conv_shape, sep='\n', end='\n\n')
+
+    assert torch.allclose(curr_conv_shape.lower, Tensor([
+        [0, 0],
+        [2, 3]
+    ]))
+    assert torch.allclose(curr_conv_shape.upper, Tensor([
+        [4, 0],
+        [-1, -2]
+    ]))
+
 
 def test_recompute_bounds_conv():
     curr_eq_greater = torch.ones(1, 2, 2, 9)
@@ -369,7 +426,7 @@ def test_recompute_bounds_conv():
     ]))
 
 def main():
-    test_recompute_bounds_conv()
+    test_aconv_backsub_relu()
 
 if __name__ == "__main__":
     main()
