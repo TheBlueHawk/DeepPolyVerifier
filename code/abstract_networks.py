@@ -9,97 +9,103 @@ from transformers import (
     AbstractLinear,
     AbstractReLU,
 )
+from anet_checkers import ANetChecker
 
+def recompute_bounds_linear(first_ashape, curr_ashape):
+    tmp_ashape_u = AbstractLinear(curr_ashape.y_less).forward(
+        first_ashape
+    )
+    tmp_ashape_l = AbstractLinear(curr_ashape.y_greater).forward(
+        first_ashape
+    )
+    return tmp_ashape_u.upper, tmp_ashape_l.lower
+
+def recompute_bounds_conv(first_ashape, curr_ashape):
+    kernel_lower = curr_ashape.y_greater[
+        :, :, :, 1:
+    ]  # <C, N, N, C2 * composedK * composedK>
+    kernel_lower = kernel_lower.flatten(0, 2)  # <C * N * N, C2 * composedK * composedK>
+    kernel_lower = kernel_lower.reshape(
+        kernel_lower.shape[0], curr_ashape.c_in, curr_ashape.k, curr_ashape.k
+    )  # <C * N * N, C2, composedK, composedK> = [c_out, c_in, k,k]
+    bias = curr_ashape.y_greater[:, :, :, 0].flatten()  # <C * N * N>
+    temp_ashape = AbstractConvolution(
+        kernel_lower,
+        bias,
+        curr_ashape.stride,
+        curr_ashape.padding,
+    ).forward(first_ashape)
+    new_l = temp_ashape.lower  # <C * N * N, N, N> # ... need to select idx
+    new_N = new_l.shape[-1]
+    new_l = (
+        new_l.reshape(-1, new_N, new_N, new_N, new_N)
+        .diagonal(dim1=1, dim2=3)
+        .diagonal(dim1=1, dim2=2)
+    )
+
+
+    kernel_upper = curr_ashape.y_less[
+        :, :, :, 1:
+    ]  # <C, N, N, C2 * composedK * composedK>
+    kernel_upper = kernel_upper.flatten(0, 2)  # <C * N * N, C2 * composedK * composedK>
+    kernel_upper = kernel_upper.reshape(
+        kernel_upper.shape[0], curr_ashape.c_in, curr_ashape.k, curr_ashape.k
+    )  # <C * N * N, C2, composedK, composedK> = [c_out, c_in, k,k]
+    bias = curr_ashape.y_less[:, :, :, 0].flatten()  # <C * N * N>
+    temp_ashape = AbstractConvolution(
+        kernel_upper,
+        bias,
+        curr_ashape.stride,
+        curr_ashape.padding,
+    ).forward(first_ashape)
+    new_u = temp_ashape.upper  # <C * N * N, N, N>  # overcomputation ...
+    new_N = new_u.shape[-1]
+    new_u = (
+        new_u.reshape(-1, new_N, new_N, new_N, new_N)
+        .diagonal(dim1=1, dim2=3)
+        .diagonal(dim1=1, dim2=2)
+    )
+
+    return new_u, new_l
+
+def recompute_bounds(first_ashape, curr_ashape, out_ashape):
+    # Recompute l & u
+    if isinstance(curr_ashape, LinearAbstractShape):
+        out_ashape.upper, out_ashape.lower = \
+            recompute_bounds_linear(first_ashape, curr_ashape)
+
+    elif isinstance(curr_ashape, ConvAbstractShape):
+        out_ashape.upper, out_ashape.lower = \
+            recompute_bounds_conv(first_ashape, curr_ashape)
+        if isinstance(out_ashape, LinearAbstractShape):
+            out_ashape.upper = torch.squeeze(out_ashape.upper)
+            out_ashape.lower = torch.squeeze(out_ashape.lower)
 
 class AbstractNetwork:
     def __init__(
         self,
         abstract_transformers: List,
+        checker:ANetChecker=None
     ) -> None:
         self.abstract_transformers = abstract_transformers
-
-    def recompute_bounds_linear(self, first_ashape, curr_ashape):
-        tmp_ashape_u = AbstractLinear(curr_ashape.y_less).forward(
-            first_ashape
-        )
-        tmp_ashape_l = AbstractLinear(curr_ashape.y_greater).forward(
-            first_ashape
-        )
-        return tmp_ashape_u.upper, tmp_ashape_l.lower
-
-    def recompute_bounds_conv(self, first_ashape, curr_ashape):
-        kernel_lower = curr_ashape.y_greater[
-            :, :, :, 1:
-        ]  # <C, N, N, C2 * composedK * composedK>
-        kernel_lower = kernel_lower.flatten(0, 2)  # <C * N * N, C2 * composedK * composedK>
-        kernel_lower = kernel_lower.reshape(
-            kernel_lower.shape[0], curr_ashape.c_in, curr_ashape.k, curr_ashape.k
-        )  # <C * N * N, C2, composedK, composedK> = [c_out, c_in, k,k]
-        bias = curr_ashape.y_greater[:, :, :, 0].flatten()  # <C * N * N>
-        temp_ashape = AbstractConvolution(
-            kernel_lower,
-            bias,
-            curr_ashape.stride,
-            curr_ashape.padding,
-        ).forward(first_ashape)
-        new_l = temp_ashape.lower  # <C * N * N, N, N> # ... need to select idx
-        new_N = new_l.shape[-1]
-        new_l = (
-            new_l.reshape(-1, new_N, new_N, new_N, new_N)
-            .diagonal(dim1=1, dim2=3)
-            .diagonal(dim1=1, dim2=2)
-        )
+        self.checker = checker
 
 
-        kernel_upper = curr_ashape.y_less[
-            :, :, :, 1:
-        ]  # <C, N, N, C2 * composedK * composedK>
-        kernel_upper = kernel_upper.flatten(0, 2)  # <C * N * N, C2 * composedK * composedK>
-        kernel_upper = kernel_upper.reshape(
-            kernel_upper.shape[0], curr_ashape.c_in, curr_ashape.k, curr_ashape.k
-        )  # <C * N * N, C2, composedK, composedK> = [c_out, c_in, k,k]
-        bias = curr_ashape.y_less[:, :, :, 0].flatten()  # <C * N * N>
-        temp_ashape = AbstractConvolution(
-            kernel_upper,
-            bias,
-            curr_ashape.stride,
-            curr_ashape.padding,
-        ).forward(first_ashape)
-        new_u = temp_ashape.upper  # <C * N * N, N, N>  # overcomputation ...
-        new_N = new_u.shape[-1]
-        new_u = (
-            new_u.reshape(-1, new_N, new_N, new_N, new_N)
-            .diagonal(dim1=1, dim2=3)
-            .diagonal(dim1=1, dim2=2)
-        )
-
-        return new_u, new_l
-
-    def recompute_bounds(self, first_ashape, curr_ashape, out_ashape):
-        # Recompute l & u
-        if isinstance(curr_ashape, LinearAbstractShape):
-            out_ashape.upper, out_ashape.lower = \
-                self.recompute_bounds_linear(first_ashape, curr_ashape)
-
-        elif isinstance(curr_ashape, ConvAbstractShape):
-            out_ashape.upper, out_ashape.lower = \
-                self.recompute_bounds_conv(first_ashape, curr_ashape)
-            if isinstance(out_ashape, LinearAbstractShape):
-                out_ashape.upper = torch.squeeze(out_ashape.upper)
-                out_ashape.lower = torch.squeeze(out_ashape.lower)
 
     def backsub(self, abstract_shape: AbstractShape, previous_shapes, check=False) -> AbstractShape:
         curr_ashape = abstract_shape
         for i, previous_shape in enumerate(reversed(previous_shapes[1:])):
-            # if isinstance(curr_ashape, ConvAbstractShape):
-            #     curr_ashape.zero_out_padding_weights()
+            if isinstance(curr_ashape, ConvAbstractShape):
+                curr_ashape.zero_out_padding_weights()
             if check:
-                self.recompute_bounds(previous_shape, curr_ashape, abstract_shape)
+                recompute_bounds(previous_shape, curr_ashape, abstract_shape)
                 self.checker.recheck(abstract_shape)
             curr_ashape = curr_ashape.backsub(previous_shape)
 
-        self.recompute_bounds(previous_shapes[0], curr_ashape, abstract_shape)
-            
+        recompute_bounds(previous_shapes[0], curr_ashape, abstract_shape)
+        if check:
+            self.checker.recheck(abstract_shape)
+
         return abstract_shape
 
     def get_abstract_transformers(self):
@@ -485,8 +491,8 @@ class AbstractNet6(AbstractNetwork):
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.conv2.forward(abstract_shape)
-        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
         self.checker.check_next(abstract_shape)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes, check=True)
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.relu2.forward(abstract_shape)

@@ -14,7 +14,7 @@ from abstract_shape import (
     LinearAbstractShape,
     weightedLoss,
 )
-from abstract_networks import AbstractNetwork
+from abstract_networks import AbstractNetwork, recompute_bounds
 from transformers import AbstractReLU, AbstractLinear
 
 
@@ -265,6 +265,115 @@ def test_aconv_backsub_conv_2():
 
     assert torch.allclose(out_shape.y_greater, tgt_shape.y_greater)
 
+
+def test_linear_backsub_relu():
+    cur_shape = LinearAbstractShape(
+        torch.tensor([[1., -1, 0.5, -2, 1], [-2., 0.5, -1, 1, -0.5]]),
+        torch.tensor([[1., -1, 0.5, -2, 1], [-2., 0.5, -1, 1, -0.5]]),
+        torch.tensor([-4, -6]),
+        torch.tensor([4.5, -1]),
+    )
+    prev_shape = ReluAbstractShape(
+        torch.tensor([
+            [0.],
+            [1],
+            [0],
+            [0]
+        ]),
+        torch.tensor([
+            [0, 0],
+            [0, 1],
+            [0.75, 0.75],
+            [1, 0.5]
+        ]),
+        torch.tensor([0., 2, 0, 0]),
+        torch.tensor([0., 3, 3, 2]),
+    ).expand()
+
+    pprev_ashape = LinearAbstractShape(
+        None,
+        None,
+        torch.tensor([-2., 2, -1, -2]),
+        torch.tensor([-1., 3, 3, 2]),
+    )
+
+    print("pprev_ashape", pprev_ashape, sep='\n', end='\n\n')
+    abstract_relu = AbstractReLU('zeros')
+    relu_ashape = abstract_relu.forward(pprev_ashape).expand()
+    print("relu_ashape", relu_ashape, sep='\n', end='\n\n')
+    abstract_linear = AbstractLinear(torch.tensor([[1., -1, 0.5, -2, 1], [-2., 0.5, -1, 1, -0.5]]))
+    linear_ashape = abstract_linear.forward(relu_ashape)
+    print("linear_ashape", linear_ashape, sep='\n', end='\n\n')
+    new_ashape = linear_ashape.backsub(relu_ashape)
+    print("new_ashape", new_ashape, sep='\n', end='\n\n')
+    recompute_bounds(pprev_ashape, new_ashape, linear_ashape)
+    print("pprev_ashape", pprev_ashape, sep='\n', end='\n\n')
+    print("recomputed linear_ashape", linear_ashape, sep='\n', end='\n\n')
+
+    new_ashape = cur_shape.backsub(prev_shape)
+    assert torch.allclose(
+        new_ashape.y_greater, torch.tensor([[-0.5, 0, 0.5, -1.5, 0], [-2.5, 0, -1, 0, -0.25]])
+    )
+    assert torch.allclose(
+        new_ashape.y_less, torch.tensor([[2, 0, 0.5, 0, 0.5], [-1.25, 0, -1, 0.75, 0]])
+    )
+
+def test_aconv_backsub_relu():
+    pass
+
+def test_recompute_bounds_conv():
+    curr_eq_greater = torch.ones(1, 2, 2, 9)
+    curr_eq_greater *= torch.arange(4).reshape(1, 2, 2, 1)
+    curr_eq_less = torch.ones(1, 2, 2, 9)
+    curr_eq_less *= (1+torch.arange(4)).reshape(1, 2, 2, 1)
+    curr_shape = ConvAbstractShape(
+        curr_eq_greater,
+        curr_eq_less,
+        None, None,
+        c_in=2, n_in=2, k=2, padding=1, stride=2
+    )
+
+    prev_shape = AbstractShape(
+        torch.empty(2, 2, 2, 1),
+        torch.empty(2, 2, 2, 1),
+        torch.tensor([
+            [[0., 0],
+             [0, 0]],
+
+            [[0, 0],
+             [0, 0]]
+        ]),
+        torch.tensor([
+            [[1., 1],
+             [1, 1]],
+
+            [[1, 1],
+             [1, 1]]
+        ])
+    )
+
+    print("prev_shape", prev_shape, sep='\n', end='\n\n')
+    print("curr_shape", curr_shape, sep='\n', end='\n\n')
+    recompute_bounds(prev_shape, curr_shape, curr_shape)
+    print("curr_shape", curr_shape, sep='\n', end='\n\n')
+    
+    assert torch.allclose(curr_shape.lower, torch.tensor([
+        [0., 1],
+        [2, 3]
+    ]))
+
+    assert torch.allclose(curr_shape.upper, torch.tensor([
+        [3., 6],
+        [9, 12]
+    ]))
+
+def main():
+    test_recompute_bounds_conv()
+
+if __name__ == "__main__":
+    main()
+
+
 # def test_ConvAbstractShape_zero_out_padding():
 #     curr_eq = torch.ones(2, 2, 2, 33)
 #     curr_eq[...,0] = 0
@@ -373,63 +482,3 @@ def test_aconv_backsub_conv_2():
 #     )
 #     new_bounds = anet.recompute_bounds_conv(input_shape, out_shape)
 #     print(new_bounds[0], new_bounds[1], sep='\n')
-
-
-def test_linear_backsub_relu():
-    cur_shape = LinearAbstractShape(
-        torch.tensor([[1., -1, 0.5, -2, 1], [-2., 0.5, -1, 1, -0.5]]),
-        torch.tensor([[1., -1, 0.5, -2, 1], [-2., 0.5, -1, 1, -0.5]]),
-        torch.tensor([-4, -6]),
-        torch.tensor([4.5, -1]),
-    )
-    prev_shape = ReluAbstractShape(
-        torch.tensor([
-            [0.],
-            [1],
-            [0],
-            [0]
-        ]),
-        torch.tensor([
-            [0, 0],
-            [0, 1],
-            [0.75, 0.75],
-            [1, 0.5]
-        ]),
-        torch.tensor([0., 2, 0, 0]),
-        torch.tensor([0., 3, 3, 2]),
-    ).expand()
-
-    pprev_ashape = LinearAbstractShape(
-        None,
-        None,
-        torch.tensor([-2., 2, -1, -2]),
-        torch.tensor([-1., 3, 3, 2]),
-    )
-
-    print("pprev_ashape", pprev_ashape, sep='\n', end='\n\n')
-    abstract_relu = AbstractReLU('zeros')
-    relu_ashape = abstract_relu.forward(pprev_ashape).expand()
-    print("relu_ashape", relu_ashape, sep='\n', end='\n\n')
-    abstract_linear = AbstractLinear(torch.tensor([[1., -1, 0.5, -2, 1], [-2., 0.5, -1, 1, -0.5]]))
-    linear_ashape = abstract_linear.forward(relu_ashape)
-    print("linear_ashape", linear_ashape, sep='\n', end='\n\n')
-    new_ashape = linear_ashape.backsub(relu_ashape)
-    print("new_ashape", new_ashape, sep='\n', end='\n\n')
-    anet = AbstractNetwork([])
-    anet.recompute_bounds(pprev_ashape, new_ashape, linear_ashape)
-    print("pprev_ashape", pprev_ashape, sep='\n', end='\n\n')
-    print("recomputed linear_ashape", linear_ashape, sep='\n', end='\n\n')
-
-    new_shape = cur_shape.backsub(prev_shape)
-    assert torch.allclose(
-        new_shape.y_greater, torch.tensor([[4.0, 3, 3, 3, 3], [2.0, 3, 3, 3, 3]])
-    )
-    assert torch.allclose(
-        new_shape.y_less, torch.tensor([[-4.0, -3, -3, -3, -3], [-2.0, -3, -3, -3, -3]])
-    )
-
-def main():
-    test_linear_backsub_relu()
-
-if __name__ == "__main__":
-    main()
