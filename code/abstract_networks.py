@@ -1,8 +1,11 @@
 from abstract_shape import AbstractShape, ConvAbstractShape, LinearAbstractShape
-from typing import List
+from typing import List, Tuple
 from torch import Tensor
 import torch
+from resnet import BasicBlock, ResNet
 from transformers import (
+    AbstractBatchNorm,
+    AbstractBlock,
     AbstractConvolution,
     AbstractNormalize,
     AbstractFlatten,
@@ -19,12 +22,8 @@ class AbstractNetwork:
         self.abstract_transformers = abstract_transformers
 
     def recompute_bounds_linear(self, first_ashape, curr_ashape):
-        tmp_ashape_u = AbstractLinear(curr_ashape.y_greater).forward(
-            first_ashape
-        )
-        tmp_ashape_l = AbstractLinear(curr_ashape.y_less).forward(
-            first_ashape
-        )
+        tmp_ashape_u = AbstractLinear(curr_ashape.y_greater).forward(first_ashape)
+        tmp_ashape_l = AbstractLinear(curr_ashape.y_less).forward(first_ashape)
         return tmp_ashape_u.upper, tmp_ashape_l.lower
 
     def recompute_bounds_conv(self, first_ashape, curr_ashape):
@@ -70,17 +69,18 @@ class AbstractNetwork:
 
         # Recompute l & u
         if isinstance(curr_ashape, LinearAbstractShape):
-            abstract_shape.upper, abstract_shape.lower = \
-                self.recompute_bounds_linear(previous_shapes[0], curr_ashape)
+            abstract_shape.upper, abstract_shape.lower = self.recompute_bounds_linear(
+                previous_shapes[0], curr_ashape
+            )
 
         elif isinstance(curr_ashape, ConvAbstractShape):
-            abstract_shape.upper, abstract_shape.lower = \
-                self.recompute_bounds_conv(previous_shapes[0], curr_ashape)
+            abstract_shape.upper, abstract_shape.lower = self.recompute_bounds_conv(
+                previous_shapes[0], curr_ashape
+            )
             if isinstance(abstract_shape, LinearAbstractShape):
                 abstract_shape.upper = torch.squeeze(abstract_shape.upper)
                 abstract_shape.lower = torch.squeeze(abstract_shape.lower)
 
-            
         return abstract_shape
 
     def get_abstract_transformers(self):
@@ -354,7 +354,7 @@ class AbstractNet5(AbstractNetwork):
         self.final_atransformer = self.buildFinalLayer(true_label, N)
         prev_abstract_shapes = []
         self.checker.check_next(abstract_shape)
-        
+
         # No need to backsub Normalization, it operates pointwise
         abstract_shape = self.normalize.forward(abstract_shape)
         self.checker.check_next(abstract_shape)
@@ -395,9 +395,7 @@ class AbstractNet5(AbstractNetwork):
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.final_atransformer.forward(abstract_shape)
-        abstract_shape = self.backsub(
-            abstract_shape, prev_abstract_shapes
-        )
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
 
         return abstract_shape
 
@@ -545,6 +543,7 @@ class AbstractNet7(AbstractNetwork):
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.lin1.forward(abstract_shape)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
         self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
@@ -553,9 +552,9 @@ class AbstractNet7(AbstractNetwork):
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.lin2.forward(abstract_shape)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
         self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
-
 
         abstract_shape = self.relu4.forward(abstract_shape).expand()
         self.checker.check_next(abstract_shape)
@@ -566,9 +565,7 @@ class AbstractNet7(AbstractNetwork):
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.final_atransformer.forward(abstract_shape)
-        abstract_shape = self.backsub(
-            abstract_shape, prev_abstract_shapes
-        )
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
 
         return abstract_shape
 
@@ -591,3 +588,317 @@ class AbstractNet7(AbstractNetwork):
         self.relu3.alphas = updated_alphas[2]
         assert self.relu4.alphas.shape == updated_alphas[3].shape
         self.relu4.alphas = updated_alphas[3]
+
+
+class AbstractNet8(AbstractNetwork):
+    def __init__(self, net, checker) -> None:
+        self.conv1 = AbstractConvolution(net.layers[1])
+        self.relu1 = AbstractReLU()
+
+        blockLayers1: torch.nn.Sequential = net.layers[3][0]
+        self.block1: AbstractBlock = AbstractBlock(blockLayers1.layer[0])
+        self.relu2 = AbstractReLU()
+        self.block2: AbstractBlock = AbstractBlock(blockLayers1.layer[0])
+        self.relu3 = AbstractReLU()
+
+        self.flatten = AbstractFlatten()
+        self.lin1 = AbstractLinear(net.layers[5])
+        self.relu4 = AbstractReLU()
+        self.lin2 = AbstractLinear(net.layers[7])
+        self.final_atransformer = None  # built in forward
+
+        self.checker = checker
+
+    def forward(self, abstract_shape, true_label, N):
+        self.final_atransformer = self.buildFinalLayer(true_label, N)
+        prev_abstract_shapes = []
+        self.checker.check_next(abstract_shape)
+
+        abstract_shape = self.conv1.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.relu1.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.block1.forward(abstract_shape)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.relu2.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.block2.forward(abstract_shape)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.relu3.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.flatten.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.lin1.forward(abstract_shape)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.relu4.forward(abstract_shape).expand()
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.lin2.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.final_atransformer.forward(abstract_shape)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+
+        return abstract_shape
+
+    def get_alphas(self) -> List[Tensor]:
+        alphas = [
+            self.relu1.alphas,
+            self.relu2.alphas,
+            self.relu3.alphas,
+            self.relu4.alphas,
+        ]
+        return alphas
+
+    def set_alphas(self, updated_alphas: List[Tensor]) -> List[Tensor]:
+        assert len(updated_alphas) == 4
+        assert self.relu1.alphas.shape == updated_alphas[0].shape
+        self.relu1.alphas = updated_alphas[0]
+        assert self.relu2.alphas.shape == updated_alphas[1].shape
+        self.relu2.alphas = updated_alphas[1]
+        assert self.relu3.alphas.shape == updated_alphas[2].shape
+        self.relu3.alphas = updated_alphas[2]
+        assert self.relu4.alphas.shape == updated_alphas[3].shape
+        self.relu4.alphas = updated_alphas[3]
+
+
+class AbstractNet9(AbstractNetwork):
+    def __init__(self, net, checker) -> None:
+        self.conv1 = AbstractConvolution(net.layers[1])
+        self.bn1 = AbstractBatchNorm(net.layers[2])
+        self.relu1 = AbstractReLU()
+
+        blockLayers1: torch.nn.Sequential = net.layers[4][0]
+        self.block1: AbstractBlock = AbstractBlock(blockLayers1.layer[0])
+        self.relu2 = AbstractReLU()
+
+        blockLayers2: torch.nn.Sequential = net.layers[4][0]
+        self.block2: AbstractBlock = AbstractBlock(blockLayers2.layer[0])
+        self.relu3 = AbstractReLU()
+
+        self.flatten = AbstractFlatten()
+        self.lin1 = AbstractLinear(net.layers[6])
+        self.relu4 = AbstractReLU()
+        self.lin2 = AbstractLinear(net.layers[8])
+        self.final_atransformer = None  # built in forward
+
+        self.checker = checker
+
+    def forward(self, abstract_shape, true_label, N):
+        self.final_atransformer = self.buildFinalLayer(true_label, N)
+        prev_abstract_shapes = []
+        self.checker.check_next(abstract_shape)
+
+        abstract_shape = self.conv1.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.bn1.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.relu1.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.block1.forward(abstract_shape)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.relu2.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.block2.forward(abstract_shape)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.relu3.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.flatten.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.lin1.forward(abstract_shape)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.relu4.forward(abstract_shape).expand()
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.lin2.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.final_atransformer.forward(abstract_shape)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+
+        return abstract_shape
+
+    def get_alphas(self) -> List[Tensor]:
+        alphas = [
+            self.relu1.alphas,
+            self.relu2.alphas,
+            self.relu3.alphas,
+            self.relu4.alphas,
+        ]
+        return alphas
+
+    def set_alphas(self, updated_alphas: List[Tensor]) -> List[Tensor]:
+        assert len(updated_alphas) == 4
+        assert self.relu1.alphas.shape == updated_alphas[0].shape
+        self.relu1.alphas = updated_alphas[0]
+        assert self.relu2.alphas.shape == updated_alphas[1].shape
+        self.relu2.alphas = updated_alphas[1]
+        assert self.relu3.alphas.shape == updated_alphas[2].shape
+        self.relu3.alphas = updated_alphas[2]
+        assert self.relu4.alphas.shape == updated_alphas[3].shape
+        self.relu4.alphas = updated_alphas[3]
+
+
+class AbstractNet10(AbstractNetwork):
+    def __init__(self, net, checker) -> None:
+        self.conv1 = AbstractConvolution(net.layers[1])
+        self.relu1 = AbstractReLU()
+
+        blockLayers1: torch.nn.Sequential = net.layers[3][0]
+        self.block1: AbstractBlock = AbstractBlock(blockLayers1.layer[0])
+        self.relu2 = AbstractReLU()
+        self.block2: AbstractBlock = AbstractBlock(blockLayers1.layer[3])
+        self.relu3 = AbstractReLU()
+
+        blockLayers2: torch.nn.Sequential = net.layers[4][0]
+        self.block3: AbstractBlock = AbstractBlock(blockLayers2.layer[0])
+        self.relu4 = AbstractReLU()
+        self.block4: AbstractBlock = AbstractBlock(blockLayers2.layer[3])
+        self.relu5 = AbstractReLU()
+
+        self.flatten = AbstractFlatten()
+        self.lin1 = AbstractLinear(net.layers[6])
+        self.relu6 = AbstractReLU()
+        self.lin2 = AbstractLinear(net.layers[8])
+        self.final_atransformer = None  # built in forward
+
+        self.checker = checker
+
+    def forward(self, abstract_shape, true_label, N):
+        self.final_atransformer = self.buildFinalLayer(true_label, N)
+        prev_abstract_shapes = []
+        self.checker.check_next(abstract_shape)
+
+        abstract_shape = self.conv1.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.relu1.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.block1.forward(abstract_shape)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.relu2.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.block2.forward(abstract_shape)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.relu3.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.block3.forward(abstract_shape)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.relu4.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.block4.forward(abstract_shape)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.relu5.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.flatten.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.lin1.forward(abstract_shape)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.relu6.forward(abstract_shape).expand()
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.lin2.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
+
+        abstract_shape = self.final_atransformer.forward(abstract_shape)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+
+        return abstract_shape
+
+    def get_alphas(self) -> List[Tensor]:
+        alphas = [
+            self.relu1.alphas,
+            self.relu2.alphas,
+            self.relu3.alphas,
+            self.relu4.alphas,
+        ]
+        return alphas
+
+    def set_alphas(self, updated_alphas: List[Tensor]) -> List[Tensor]:
+        assert len(updated_alphas) == 4
+        assert self.relu1.alphas.shape == updated_alphas[0].shape
+        self.relu1.alphas = updated_alphas[0]
+        assert self.relu2.alphas.shape == updated_alphas[1].shape
+        self.relu2.alphas = updated_alphas[1]
+        assert self.relu3.alphas.shape == updated_alphas[2].shape
+        self.relu3.alphas = updated_alphas[2]
+        assert self.relu4.alphas.shape == updated_alphas[3].shape
+        self.relu4.alphas = updated_alphas[3]
+        assert self.relu5.alphas.shape == updated_alphas[4].shape
+        self.relu5.alphas = updated_alphas[4]
+        assert self.relu6.alphas.shape == updated_alphas[5].shape
+        self.relu6.alphas = updated_alphas[5]
