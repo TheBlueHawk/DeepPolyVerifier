@@ -8,6 +8,7 @@ import torch.nn as nn
 from torch import Tensor
 import torch.nn.functional as F
 import math
+from resnet import BasicBlock
 
 
 from abstract_shape import (
@@ -343,11 +344,10 @@ class AbstractConvolution:
         return l_i
 
 
-class AbstractBlock:
+class AbstractResidualSum:
     def __init__(self, *args) -> None:
-        if isinstance(args[0], nn.Sequential):
-            pass
-            # self._init_from_layer(*args)
+        if isinstance(args[0], nn.BasicBlock):
+            self._init_from_layer(*args)
 
         elif isinstance(args[0], torch.Tensor):
             pass
@@ -358,15 +358,17 @@ class AbstractBlock:
                 "Invalid arguments passed to the initializer of AbstractLinear"
             )
 
-    def forward(self, x: AbstractShape) -> AbstractShape:
+    def _init_from_layer(self):
+        pass
+
+    def forward(self, a: AbstractShape, b: AbstractShape) -> AbstractShape:
         pass
 
 
 class AbstractBatchNorm:
     def __init__(self, *args) -> None:
-        if isinstance(args[0], nn.Sequential):
-            pass
-            # self._init_from_layer(*args)
+        if isinstance(args[0], nn.BasicBlock):
+            self._init_from_layer(*args)
 
         elif isinstance(args[0], torch.Tensor):
             pass
@@ -376,6 +378,9 @@ class AbstractBatchNorm:
             raise Exception(
                 "Invalid arguments passed to the initializer of AbstractLinear"
             )
+
+    def _init_from_layer(self):
+        pass
 
     def forward(self, x: AbstractShape) -> AbstractShape:
         pass

@@ -11,6 +11,7 @@ from transformers import (
     AbstractFlatten,
     AbstractLinear,
     AbstractReLU,
+    AbstractResidualSum,
 )
 
 
@@ -598,7 +599,7 @@ class AbstractNet8(AbstractNetwork):
         blockLayers1: torch.nn.Sequential = net.layers[3][0]
         self.block1: AbstractBlock = AbstractBlock(blockLayers1.layer[0])
         self.relu2 = AbstractReLU()
-        self.block2: AbstractBlock = AbstractBlock(blockLayers1.layer[0])
+        self.block2: AbstractBlock = AbstractBlock(blockLayers1.layer[3])
         self.relu3 = AbstractReLU()
 
         self.flatten = AbstractFlatten()
@@ -902,3 +903,94 @@ class AbstractNet10(AbstractNetwork):
         self.relu5.alphas = updated_alphas[4]
         assert self.relu6.alphas.shape == updated_alphas[5].shape
         self.relu6.alphas = updated_alphas[5]
+
+
+class AbstractBlockSubnet(AbstractNetwork):
+    def __init__(self, block: BasicBlock, checker) -> None:
+        self.path_a: torch.nn.Sequential = block.path_a
+        self.path_b: torch.nn.Sequential = block.path_b
+        self.bn: bool = block.bn
+
+        # Path A
+        self.conv1a = None
+        self.bn1a = None
+        if len(self.path_a) > 1:
+            # self.path_a[1] == Identity
+            self.conv1a = AbstractConvolution(self.path_a[1])
+            if self.bn:
+                self.bn1a = AbstractBatchNorm(self.path_a[2])
+
+        # Path B
+        self.conv1b = AbstractConvolution(self.path_b[0])
+        if self.bn:
+            self.bn1b = AbstractBatchNorm(self.path_b[1])
+            self.relu1b = AbstractReLU(self.path_b[2])
+            self.conv2b = AbstractConvolution(self.path_b[3])
+            self.bn2b = AbstractBatchNorm(self.path_b[4])
+        else:
+            self.relu1b = AbstractReLU(self.path_b[1])
+            self.conv1b = AbstractConvolution(self.path_b[2])
+
+        self.res_sum = AbstractResidualSum()
+        self.checker = checker
+
+    def forward(self, abstract_shape: AbstractShape) -> AbstractShape:
+        prev_abstract_shapes_a = []
+        prev_abstract_shapes_b = []
+        abstract_shape_a = abstract_shape
+        abstract_shape_b = abstract_shape
+        self.checker.check_next(abstract_shape)
+
+        # Path A
+        if self.conv1a is not None:
+            # conv1a
+            abstract_shape_a = self.conv1a.forward(abstract_shape_a)
+            self.checker.check_next(abstract_shape_a)
+            prev_abstract_shapes_a.append(abstract_shape_a)
+            # bn1a
+            if self.bn:
+                abstract_shape_a = self.bn1a.forward(abstract_shape_a)
+                self.checker.check_next(abstract_shape_a)
+                prev_abstract_shapes_a.append(abstract_shape_a)
+
+        # Path B
+        # conv1b
+        abstract_shape_b = self.conv1b.forward(abstract_shape_b)
+        self.checker.check_next(abstract_shape_b)
+        prev_abstract_shapes_b.append(abstract_shape_b)
+        # bn1b
+        if self.bn:
+            abstract_shape_b = self.bn1b.forward(abstract_shape_b)
+            self.checker.check_next(abstract_shape_b)
+            prev_abstract_shapes_b.append(abstract_shape_b)
+        # relu1b
+        abstract_shape_b = self.relu1b.forward(abstract_shape_b)
+        self.checker.check_next(abstract_shape_b)
+        prev_abstract_shapes_b.append(abstract_shape_b)
+        # conv2b
+        abstract_shape_b = self.conv2b.forward(abstract_shape_b)
+        abstract_shape_b = self.backsub(abstract_shape_b, prev_abstract_shapes_b)
+        self.checker.check_next(abstract_shape_b)
+        prev_abstract_shapes_b.append(abstract_shape_b)
+        if self.bn:
+            abstract_shape_b = self.bn2b.forward(abstract_shape_b)
+            self.checker.check_next(abstract_shape_b)
+            prev_abstract_shapes_b.append(abstract_shape_b)
+
+        # ResConnection
+        abstract_shape = self.res_sum.forward(abstract_shape_a, abstract_shape_b)
+        self.checker.check_next(abstract_shape)
+        return abstract_shape
+
+    def get_alphas(self) -> List[Tensor]:
+        alphas = [self.relu1b.alphas]
+        return alphas
+
+    def set_alphas(self, updated_alphas: List[Tensor]) -> List[Tensor]:
+        assert len(updated_alphas) == 1
+        assert self.relu1.alphas.shape == updated_alphas[0].shape
+        self.relu1b.alphas = updated_alphas[0]
+
+
+# TODO: ALPHAS
+# get / set alphas of blocks in net8,9,10
