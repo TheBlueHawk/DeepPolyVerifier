@@ -62,7 +62,9 @@ class DeepPolyVerifier:
         self.abstract_net = abstract_net_class(net, self.checker)
         self.N = 10
         self.gamma = 4
-        self.ALPHA_ITERS = 1
+        self.ALPHA_EPOCHS = 4
+        self.ALPHA_ITERS = 50
+        self.LR = 1e-1
 
     def verify(self, inputs, eps, true_label) -> bool:
         """
@@ -75,29 +77,34 @@ class DeepPolyVerifier:
         abstract_input = create_abstract_input_shape(inputs.squeeze(0), eps)
         self.checker.reset(inputs)
 
-        for _ in range(self.ALPHA_ITERS):
-            final_abstract_shape = self.abstract_net.forward(
-                abstract_input, true_label, self.N
-            )
-            if verifyFinalShape(final_abstract_shape):
-                return True
-            
-            self.checker.reset(inputs)
+        for _ in range(self.ALPHA_EPOCHS):
+            for _ in range(self.ALPHA_ITERS):
+                final_abstract_shape = self.abstract_net.forward(
+                    abstract_input, true_label, self.N
+                )
+                # print(f"Max violation:\t {final_abstract_shape.lower.min()}")
+                if verifyFinalShape(final_abstract_shape):
+                    return True
+                
+                self.checker.reset(inputs)
 
-            # Do just one step and then recompute the output
-            # Alternatively could do multiple step with the existing mapping
-            # from input neurons to bounds
-            
+                # Do just one step and then recompute the output
+                # Alternatively could do multiple step with the existing mapping
+                # from input neurons to bounds
+                
+                alphas = self.abstract_net.get_alphas()
+                optim = torch.optim.Adam(alphas, lr=self.LR)
+                optim.zero_grad()
+                loss = weightedLoss(final_abstract_shape.lower, self.gamma)
+                loss.backward()
+                optim.step()
+                alphas_clamped = [a.clamp(0, 1).detach().requires_grad_() for a in alphas]
+                self.abstract_net.set_alphas(alphas_clamped)
+
             alphas = self.abstract_net.get_alphas()
-            optim = torch.optim.SGD(alphas, lr=1e-1)
-            optim.zero_grad()
-            loss = weightedLoss(final_abstract_shape.lower, self.gamma)
-            loss.backward()
-            optim.step()
-            alphas_clamped = [a.clamp(0, 1).detach().requires_grad_() for a in alphas]
-            self.abstract_net.set_alphas(alphas_clamped)
-
-        return False
+            new_alphas = [torch.rand_like(a) for a in alphas]
+            self.abstract_net.set_alphas(new_alphas)
+            return False
 
 
 def verifyFinalShape(final_shape: AbstractShape) -> bool:

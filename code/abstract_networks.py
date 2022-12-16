@@ -191,9 +191,9 @@ class AbstractNet2(AbstractNetwork):
         self.normalize = AbstractNormalize(net.layers[0])
         self.flatten = AbstractFlatten()
         self.lin1 = AbstractLinear(net.layers[2])
-        self.relu1 = AbstractReLU('zeros')
+        self.relu1 = AbstractReLU()
         self.lin2 = AbstractLinear(net.layers[4])
-        self.relu2 = AbstractReLU('zeros')
+        self.relu2 = AbstractReLU()
         self.lin3 = AbstractLinear(net.layers[6])
         self.final_atransformer = None  # built in forward
 
