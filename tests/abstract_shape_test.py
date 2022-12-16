@@ -13,9 +13,10 @@ from abstract_shape import (
     buildConstraints3DMatrix,
     LinearAbstractShape,
     weightedLoss,
+    create_abstract_input_shape
 )
 from abstract_networks import AbstractNetwork, recompute_bounds
-from transformers import AbstractReLU, AbstractLinear
+from transformers import AbstractReLU, AbstractLinear, AbstractConvolution
 
 
 def test_expand_abstract_shape():
@@ -266,6 +267,350 @@ def test_aconv_backsub_conv_2():
     assert torch.allclose(out_shape.y_greater, tgt_shape.y_greater)
 
 
+def test_aconv_backsub_conv_tightens_bounds1():
+    """ If we increase eps, the new shape should be a superset of the old one.
+    """
+    C = 1
+    C1 = 1
+    inputs = torch.zeros(1, 4, 4)
+    input_ashape = create_abstract_input_shape(inputs, 1)
+    conv_trans1 = AbstractConvolution(
+        torch.ones(C1, 1, 4, 4), # kernel
+        torch.zeros(C1),  # bias
+        2, # stride
+        1 # padding
+    )
+    conv_trans2 = AbstractConvolution(
+        torch.ones(C, C1, 4, 4),
+        torch.zeros(C),
+        2,
+        1
+    )
+
+    ashape1 = conv_trans1.forward(input_ashape)
+    ashape2 = conv_trans2.forward(ashape1)
+    ashape2_no_padd = ashape2.zero_out_padding_weights()
+    new_ashape = ashape2_no_padd.backsub(ashape1).zero_out_padding_weights()
+    recompute_bounds(input_ashape, new_ashape, new_ashape)
+
+    print("new_ashape", new_ashape, sep='\n')
+
+    print("Bad idx lower")
+    bad_idx_lower = ashape2.lower > new_ashape.lower
+    print(ashape2.lower[bad_idx_lower][:5])
+    print("<=")
+    print(new_ashape.lower[bad_idx_lower][:5])
+
+    print("Bad idx upper")
+    bad_idx_upper = ashape2.upper < new_ashape.upper
+    print(ashape2.upper[bad_idx_upper][:5])
+    print(">=")
+    print(new_ashape.upper[bad_idx_upper][:5])
+
+    assert torch.all(ashape2.lower <= new_ashape.lower)
+    assert torch.all(new_ashape.upper <= ashape2.upper)
+
+
+def test_aconv_backsub_conv_tightens_bounds2():
+    """ Backsub gives tighter bounds.
+    """
+    M = 1
+    C = 4
+    C1 = 4
+    N2 = 28
+    inputs = torch.zeros(1, N2, N2)
+    input_ashape = create_abstract_input_shape(inputs, M, bounds=(-M, M))
+    conv_trans1 = AbstractConvolution(
+        M * torch.rand(C1, 1, 4, 4), # kernel
+        M * torch.rand(C1),  # bias
+        2, # stride
+        1 # padding
+    )
+    conv_trans2 = AbstractConvolution(
+        M * torch.rand(C, C1, 4, 4),
+        M * torch.rand(C),
+        2,
+        1
+    )
+
+    ashape1 = conv_trans1.forward(input_ashape)
+    ashape2 = conv_trans2.forward(ashape1)
+    ashape2_no_padd = ashape2.zero_out_padding_weights()
+    new_ashape = ashape2_no_padd.backsub(ashape1).zero_out_padding_weights()
+    recompute_bounds(input_ashape, new_ashape, new_ashape)
+
+    print("new_ashape", new_ashape, sep='\n')
+
+    print("Bad idx lower")
+    bad_idx_lower = ashape2.lower > new_ashape.lower
+    print(ashape2.lower[bad_idx_lower][:5])
+    print("<=")
+    print(new_ashape.lower[bad_idx_lower][:5])
+
+    print("Bad idx upper")
+    bad_idx_upper = ashape2.upper < new_ashape.upper
+    print(ashape2.upper[bad_idx_upper][:5])
+    print(">=")
+    print(new_ashape.upper[bad_idx_upper][:5])
+
+    assert torch.all((ashape2.lower <= new_ashape.lower) |
+                torch.allclose(ashape2.lower, new_ashape.lower))
+    assert torch.all((new_ashape.upper <= ashape2.upper) |
+                torch.allclose(new_ashape.upper, ashape2.upper))
+
+
+def test_aconv_backsub_relu_conv_tightens_bounds3():
+    """ Backsub tightenes the bounds.
+    """
+    M = 10
+    C = 32
+    C1 = 16
+    N2 = 28
+    inputs = torch.zeros(1, N2, N2)
+    input_ashape = create_abstract_input_shape(inputs, M, bounds=(-M, M))
+    conv_trans1 = AbstractConvolution(
+        M * torch.rand(C1, 1, 4, 4), # kernel
+        M * torch.rand(C1),  # bias
+        2, # stride
+        1 # padding
+    )
+    arelu_trans = AbstractReLU('zeros')
+    conv_trans2 = AbstractConvolution(
+        M * torch.rand(C, C1, 4, 4),
+        M * torch.rand(C),
+        2,
+        1
+    )
+
+    conv_shape1 = conv_trans1.forward(input_ashape)
+    relu_shape = arelu_trans.forward(conv_shape1)
+    conv_shape2 = conv_trans2.forward(relu_shape)
+    conv_shape2_no_pad = conv_shape2.zero_out_padding_weights()
+
+    new_ashape = conv_shape2_no_pad\
+                .backsub(relu_shape)\
+                .zero_out_padding_weights()\
+                .backsub(conv_shape1)
+
+    recompute_bounds(input_ashape, new_ashape, new_ashape)
+
+    # print("new_ashape", new_ashape, sep='\n')
+
+    print("Bad idx lower")
+    bad_idx_lower = conv_shape2.lower > new_ashape.lower
+    print(conv_shape2.lower[bad_idx_lower][:5])
+    print("<=")
+    print(new_ashape.lower[bad_idx_lower][:5])
+
+    print("Bad idx upper")
+    bad_idx_upper = conv_shape2.upper < new_ashape.upper
+    print(conv_shape2.upper[bad_idx_upper][:5])
+    print(">=")
+    print(new_ashape.upper[bad_idx_upper][:5])
+
+    assert torch.all((conv_shape2.lower <= new_ashape.lower) |
+                torch.isclose(conv_shape2.lower, new_ashape.lower))
+    assert torch.all((new_ashape.upper <= conv_shape2.upper) |
+                torch.isclose(new_ashape.upper, conv_shape2.upper))
+
+
+def test_aconv_backsub_conv_concrete_stays_inside():
+    """ The concrete point stays in ashape after backsub.
+    """
+    # Hyperparams
+    M = 1
+    C = 32
+    C1 = 16
+    C2 = 1
+    N2 = 28
+    K = 4
+    S = 2
+    P = 1
+
+    # inputs
+    inputs = torch.ones(C2, N2, N2)
+    input_ashape = create_abstract_input_shape(inputs, 10, bounds=(-1000, 1000))
+    inputs = inputs.unsqueeze(0)
+
+    # conv1
+    kernel1 = M * torch.rand(C1, C2, K, K)
+    bias1 = M * torch.rand(C1)
+    conv1 = torch.nn.Conv2d(C2, C1, K, S, P)
+    conv1.weight.data = kernel1
+    conv1.bias.data = bias1
+    conv_trans1 = AbstractConvolution(
+        kernel1, # kernel
+        bias1,  # bias
+        S, # stride
+        P # padding
+    )
+    
+    # conv2
+    kernel2 = M * torch.rand(C, C1, K, K)
+    bias2 = M * torch.rand(C)
+    conv2 = torch.nn.Conv2d(C1, C, K, S, P)
+    conv2.weight.data = kernel2
+    conv2.bias.data = bias2
+    conv_trans2 = AbstractConvolution(
+        kernel2, # kernel
+        bias2,  # bias
+        S, # stride
+        P # padding
+    )
+
+    # Abstract forward
+    conv_shape1 = conv_trans1.forward(input_ashape)
+    conv_shape2 = conv_trans2.forward(conv_shape1)
+
+    # Concrete forward
+    conv1_out = conv1.forward(inputs)
+    conv2_out = conv2.forward(conv1_out)
+    conv2_out = conv2_out.squeeze(0)
+
+    # Check inlcusion
+    print("Bad idx lower")
+    bad_idx_lower = conv_shape2.lower > conv2_out
+    print("lower", conv_shape2.lower[bad_idx_lower][:5])
+    print("<=")
+    print("point", conv2_out[bad_idx_lower][:5])
+
+    print("Bad idx upper")
+    bad_idx_upper = conv_shape2.upper < conv2_out
+    print("upper", conv_shape2.upper[bad_idx_upper][:5])
+    print(">=")
+    print("point", conv2_out[bad_idx_upper][:5])
+
+    assert torch.all((conv_shape2.lower <= conv2_out) |
+                torch.isclose(conv_shape2.lower, conv2_out))
+    assert torch.all((conv2_out <= conv_shape2.upper) |
+                torch.isclose(conv_shape2.upper, conv2_out))
+
+    # Abstract backward
+    conv_shape2_no_pad = conv_shape2.zero_out_padding_weights()
+    new_ashape = conv_shape2\
+                .backsub(conv_shape1)\
+                # .zero_out_padding_weights()
+    recompute_bounds(input_ashape, new_ashape, conv_shape2)
+
+    # Check inclusion
+    print("Bad idx lower")
+    bad_idx_lower = conv_shape2.lower > conv2_out
+    print("lower", conv_shape2.lower[bad_idx_lower][:5])
+    print("<=")
+    print("point", conv2_out[bad_idx_lower][:5])
+
+    print("Bad idx upper")
+    bad_idx_upper = conv_shape2.upper < conv2_out
+    print("upper", conv_shape2.upper[bad_idx_upper][:5])
+    print(">=")
+    print("point", conv2_out[bad_idx_upper][:5])
+
+    assert torch.all((conv_shape2.lower <= conv2_out) |
+                torch.isclose(conv_shape2.lower, conv2_out))
+    assert torch.all((conv2_out <= conv_shape2.upper) |
+                torch.isclose(conv_shape2.upper, conv2_out))
+
+
+def test_aconv_backsub_relu_conv_concrete_stays_inside():
+    """ The concrete point stays in ashape after backsub.
+    """
+    # Hyperparams
+    C2 = 1
+    N2 = 4
+    C1 = 2
+    C = 1
+    K = 4
+    S = 2
+    P = 1
+    M = 2
+
+    # inputs
+    inputs = 0.1 * torch.ones(C2, N2, N2)
+    input_ashape = create_abstract_input_shape(inputs, 0.5, bounds=(-10, 10))
+    inputs = inputs.unsqueeze(0)
+    # print("input_ashape", input_ashape, '\n')
+
+    # conv1
+    kernel1 = M * torch.rand(C1, C2, K, K)
+    bias1 = M * torch.zeros(C1)
+    conv1 = torch.nn.Conv2d(C2, C1, K, S, P)
+    conv1.weight.data = kernel1
+    conv1.bias.data = bias1
+    conv_trans1 = AbstractConvolution(
+        kernel1, # kernel
+        bias1,  # bias
+        S, # stride
+        P # padding
+    )
+
+    # relu
+    relu = torch.nn.ReLU()
+    arelu_trans = AbstractReLU('zeros')
+    
+    # conv2
+    kernel2 = M * torch.rand(C, C1, K, K)
+    bias2 = M * torch.zeros(C)
+    conv2 = torch.nn.Conv2d(C1, C, K, S, P)
+    conv2.weight.data = kernel2
+    conv2.bias.data = bias2
+    conv_trans2 = AbstractConvolution(
+        kernel2,
+        bias2,
+        S,
+        P
+    )
+
+    # Abstract forward
+    conv_shape1 = conv_trans1.forward(input_ashape)
+    relu_shape = arelu_trans.forward(conv_shape1)
+    conv_shape2 = conv_trans2.forward(relu_shape)
+
+    # print("conv_shape2", conv_shape2, sep='\n')
+
+    # Concrete forward
+    conv1_out = conv1.forward(inputs)
+    relu_out = relu(conv1_out)
+    conv2_out = conv2.forward(relu_out)
+    conv2_out = conv2_out.squeeze(0)
+
+    
+
+    # Check inlcusion
+    assert torch.all((conv_shape2.lower <= conv2_out) |
+                torch.isclose(conv_shape2.lower, conv2_out))
+    assert torch.all((conv2_out <= conv_shape2.upper) |
+                torch.isclose(conv_shape2.upper, conv2_out))
+
+    # Abstract backward
+    conv_shape2_no_pad = conv_shape2.zero_out_padding_weights()
+    new_ashape = conv_shape2_no_pad\
+                .backsub(relu_shape)\
+                .zero_out_padding_weights()\
+                .backsub(conv_shape1)
+    print("input_ashape", input_ashape, '\n')
+    recompute_bounds(input_ashape, new_ashape, conv_shape2)
+
+    # print("conv_shape2", conv_shape2, sep='\n')
+
+    # Check inclusion
+    print("Bad idx lower")
+    bad_idx_lower = conv_shape2.lower > conv2_out
+    print("lower", conv_shape2.lower[bad_idx_lower][:5])
+    print("<=")
+    print("point", conv2_out[bad_idx_lower][:5])
+
+    print("Bad idx upper")
+    bad_idx_upper = conv_shape2.upper < conv2_out
+    print("upper", conv_shape2.upper[bad_idx_upper][:5])
+    print(">=")
+    print("point", conv2_out[bad_idx_upper][:5])
+
+    assert torch.all((conv_shape2.lower <= conv2_out) |
+                torch.isclose(conv_shape2.lower, conv2_out))
+    assert torch.all((conv2_out <= conv_shape2.upper) |
+                torch.isclose(conv_shape2.upper, conv2_out))
+
+
 def test_linear_backsub_relu():
     cur_shape = LinearAbstractShape(
         torch.tensor([[1., -1, 0.5, -2, 1], [-2., 0.5, -1, 1, -0.5]]),
@@ -317,6 +662,7 @@ def test_linear_backsub_relu():
     assert torch.allclose(
         new_ashape.y_less, torch.tensor([[2, 0, 0.5, 0, 0.5], [-1.25, 0, -1, 0.75, 0]])
     )
+
 
 def test_aconv_backsub_relu():
     curr_eq_greater = torch.ones(1, 2, 2, 9)
@@ -426,7 +772,9 @@ def test_recompute_bounds_conv():
     ]))
 
 def main():
-    test_aconv_backsub_relu()
+    for i in range(100):
+        test_aconv_backsub_relu_conv_concrete_stays_inside()
+        print(i)
 
 if __name__ == "__main__":
     main()

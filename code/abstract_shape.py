@@ -181,6 +181,13 @@ class ConvAbstractShape(AbstractShape):
         self.padding = padding
         self.stride = stride
 
+    def __str__(self):
+        return (
+            f"y_greater weights\n{self.y_greater[...,1:].reshape(*self.y_greater.shape[:-1], self.c_in, self.k, self.k)}\n"
+            f"y_greater bias\n{self.y_greater[...,0].reshape(self.lower.shape)}"
+            f"\ny_less\n{self.y_less}\nlower\n{self.lower}\nupper\n{self.upper}"
+        )
+
     def zero_out_padding_weights(self):
         # bitmask = torch.zeros(self.c_in, self.n_in + 2 * self.padding,
         #                     self.n_in + 2 * self.padding)
@@ -202,9 +209,20 @@ class ConvAbstractShape(AbstractShape):
                             .swapaxes(0, 1)\
                             .reshape(N, N, -1)\
                             .unsqueeze(0)
+        unfolded_bitmask = torch.cat([torch.ones(*unfolded_bitmask.shape[:-1], 1), 
+                            unfolded_bitmask], axis=3)
 
-        self.y_greater[..., 1:] *= unfolded_bitmask
-        self.y_less[..., 1:] *= unfolded_bitmask
+        new_y_greater = self.y_greater * unfolded_bitmask
+        new_y_less = self.y_less * unfolded_bitmask
+
+        return ConvAbstractShape(
+            y_greater=new_y_greater, 
+            y_less=new_y_less, 
+            lower=None,#self.lower.clone(), 
+            upper=None,#self.upper.clone(), 
+            c_in=self.c_in, 
+            n_in=self.n_in, 
+            k=self.k, padding=self.padding, stride=self.stride)
 
     def backsub(self, previous_abstract_shape: AbstractShape) -> ConvAbstractShape:
         if isinstance(previous_abstract_shape, ReluAbstractShape):
@@ -305,6 +323,7 @@ class ConvAbstractShape(AbstractShape):
 
     def backsub_conv(self, previous_conv_shape: ConvAbstractShape) -> ConvAbstractShape:
         cur_y_greater = self.y_greater  # <C, N, N, 1 + C1 * K * K>
+        cur_y_less = self.y_less
         prev_y_greater = previous_conv_shape.y_greater  # <C1, N1, N1, 1 + C2 * K1 * K1>
         C = cur_y_greater.shape[0]
         C1 = prev_y_greater.shape[0]
@@ -320,6 +339,7 @@ class ConvAbstractShape(AbstractShape):
         P = self.padding
         P1 = previous_conv_shape.padding
 
+        ### y_greater ###
         # Separate bias and reshape as <batchdim=C*N*N, kernel dims>
         inputs = cur_y_greater[:, :, :, 1:].reshape(
             (C * N * N, C1, K, K)
@@ -351,7 +371,45 @@ class ConvAbstractShape(AbstractShape):
             C, N, N
         )  # <C, N, N>
         bias = bias_1 + bias_2  # <C, N, N>
-        composed_kernel_with_b = torch.cat(
+        composed_kernel_with_b_greater = torch.cat(
+            (bias.unsqueeze(-1), composed_kernel), -1
+        )  # <C, N, N, C2 * H_out * W_out + 1>
+
+
+        ### y_less ###
+        # Separate bias and reshape as <batchdim=C*N*N, kernel dims>
+        inputs = cur_y_less[:, :, :, 1:].reshape(
+            (C * N * N, C1, K, K)
+        )  # <C * N * N, C1, K, K> .         # doc: (minibatch,in_channels,iH,iW)
+        # Separate bias, isolate kernel and reshape
+        # prev_y_greater = prev_y_less for a conv layer
+        weights = (
+            prev_y_greater[:, 0, 0, 1:]  # same kernel for all pixels
+            .squeeze(dim=1)
+            .squeeze(dim=1)
+            .reshape((C1, C2, K1, K1))
+        )  # <C1, C2, K1, K1>      # doc: (in_channels, out_channels,kH,kW)
+        # ConvT the two kernels
+        composed_kernel = conv_transpose2d(
+            inputs, weights, stride=S1, padding=0
+        )  # <C * N * N, C2, H_out, W_out> .   # doc: (bachdim,C_out,H_out,W_out)
+        K2 = composed_kernel.shape[-1]
+        composed_kernel = composed_kernel.reshape(
+            C, N, N, -1
+        )  # <C, N, N, C2 * H_out * W_out>
+
+        # print(composed_kernel.shape)
+
+        # Compute and concat bias
+        bias_1 = cur_y_less[:, :, :, 0]  # <C, N, N >
+        bias_2_flat_cube = (
+            prev_y_greater[:, 0, 0:1, 0:1].expand(C1, K, K).flatten()
+        )  # <C1 * K * K>
+        bias_2 = torch.matmul(inputs.flatten(-3, -1), bias_2_flat_cube).reshape(
+            C, N, N
+        )  # <C, N, N>
+        bias = bias_1 + bias_2  # <C, N, N>
+        composed_kernel_with_b_less = torch.cat(
             (bias.unsqueeze(-1), composed_kernel), -1
         )  # <C, N, N, C2 * H_out * W_out + 1>
 
@@ -360,8 +418,8 @@ class ConvAbstractShape(AbstractShape):
         P2 = P1 + S1 * P  # wrong ?
 
         return ConvAbstractShape(
-            composed_kernel_with_b,
-            composed_kernel_with_b,
+            composed_kernel_with_b_greater,
+            composed_kernel_with_b_less,
             None,
             None,
             c_in=C2,
