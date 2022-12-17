@@ -8,6 +8,7 @@ import torch.nn as nn
 from torch import Tensor
 import torch.nn.functional as F
 import math
+from resnet import BasicBlock
 
 
 from abstract_shape import (
@@ -90,10 +91,14 @@ class AbstractNormalize:
 
     def forward(self, x: AbstractShape) -> AbstractShape:
         # y_greater_one_neur = torch.tensor([-self.mean / self.sigma, 1 / self.sigma])
-        y_greater = torch.zeros(*x.y_greater.shape[:-1], 1)  # y_greater_one_neur.repeat((x.lower.shape[0], 1))
+        y_greater = torch.zeros(
+            *x.y_greater.shape[:-1], 1
+        )  # y_greater_one_neur.repeat((x.lower.shape[0], 1))
 
         # y_less_one_neur = torch.tensor([-self.mean / self.sigma, 1 / self.sigma])
-        y_less = torch.zeros(*x.y_greater.shape[:-1], 1)  # y_less_one_neur.repeat((x.lower.shape[0], 1))
+        y_less = torch.zeros(
+            *x.y_greater.shape[:-1], 1
+        )  # y_less_one_neur.repeat((x.lower.shape[0], 1))
 
         lower = (x.lower - self.mean) / self.sigma
         upper = (x.upper - self.mean) / self.sigma
@@ -341,6 +346,48 @@ class AbstractConvolution:
             conv.reshape(self.c_out, -1)
         )  # shape: (C_out,C_in * self.h * self.w)
         return l_i
+
+
+class AbstractResidualSum:
+    def __init__(self, *args) -> None:
+        if isinstance(args[0], nn.BasicBlock):
+            self._init_from_layer(*args)
+
+        elif isinstance(args[0], torch.Tensor):
+            pass
+            # self._init_from_tensor(*args)
+
+        else:
+            raise Exception(
+                "Invalid arguments passed to the initializer of AbstractLinear"
+            )
+
+    def _init_from_layer(self):
+        pass
+
+    def forward(self, a: AbstractShape, b: AbstractShape) -> AbstractShape:
+        pass
+
+
+class AbstractBatchNorm:
+    def __init__(self, *args) -> None:
+        if isinstance(args[0], nn.BasicBlock):
+            self._init_from_layer(*args)
+
+        elif isinstance(args[0], torch.Tensor):
+            pass
+            # self._init_from_tensor(*args)
+
+        else:
+            raise Exception(
+                "Invalid arguments passed to the initializer of AbstractLinear"
+            )
+
+    def _init_from_layer(self):
+        pass
+
+    def forward(self, x: AbstractShape) -> AbstractShape:
+        pass
 
 
 def conv_output_shape(h_w, kernel_size=1, stride=1, pad=0, dilation=1):
