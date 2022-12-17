@@ -69,6 +69,23 @@ def test_AbstrctReLU_crossing_2():
     assert torch.allclose(out.upper, torch.tensor([2.5, 2.0]))
 
 
+def test_AbstractReLu_mixed_1():
+    aInput = LinearAbstractShape(
+        torch.tensor([[0.0, 1.0, 1.0, 1, 1], [0.0, 1.0, -1.0, 1, 1]]),
+        torch.tensor([[0.0, 1.0, 1.0, 1, 1], [0.0, 1.0, -1.0, 1, 1]]),
+        torch.tensor([-2.0, -2.0, 1, -2]),
+        torch.tensor([2.0, 2.0, 2, -1]),
+    )
+    aReLU = AbstractReLU(alpha_init="zeros")
+
+    out = aReLU.forward(aInput)
+
+    assert torch.allclose(out.y_greater, torch.tensor([[0.0], [0.0], [1], [0]]))
+    assert torch.allclose(out.y_less, torch.tensor([[1.0, 0.5], [1, 0.5], [0, 1], [0, 0]]))
+    assert torch.allclose(out.lower, torch.tensor([0.0, 0.0, 1, 0]))
+    assert torch.allclose(out.upper, torch.tensor([2.0, 2.0, 2, 0]))
+
+
 def test_AbstractNormalize():
     aInput = AbstractShape(
         torch.FloatTensor([-1, -2]).reshape(-1, 1),
@@ -172,3 +189,9 @@ def test_AbstractConvolution_2():
         [[-5, -7],
          [-10, -12]],
     ]))
+
+def main():
+    test_AbstractReLu_mixed_1()
+
+if __name__ == '__main__':
+    main()

@@ -66,7 +66,11 @@ class AbstractFlatten:
 
     def forward(self, x: AbstractShape) -> FlattenAbstractShape:
         return FlattenAbstractShape(
-            None, None, x.lower.flatten(), x.upper.flatten(), x.lower.shape
+            y_greater = None,
+            y_less = None,
+            lower = x.lower.flatten(),
+            upper = x.upper.flatten(),
+            original_shape = x.lower.shape
         )
 
 
@@ -169,7 +173,7 @@ class AbstractReLU:
         a_greater_j = torch.where(stricly_positive, ones, a_greater_j)
 
         # crossing: keep upperbound, lowerbound at zero, greater_than zero, less than slope
-        crossing = (l_i <= 0) & (u_i >= 0)
+        crossing = (l_i < 0) & (u_i > 0)
         slope = u_i / (u_i - l_i)
         u_j = torch.where(crossing, u_i, u_j)
         l_j = torch.where(crossing, torch.zeros_like(l_i), l_j)
