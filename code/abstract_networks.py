@@ -14,14 +14,12 @@ from transformers import (
 )
 from anet_checkers import ANetChecker
 
+
 def recompute_bounds_linear(first_ashape, curr_ashape):
-    tmp_ashape_u = AbstractLinear(curr_ashape.y_less).forward(
-        first_ashape
-    )
-    tmp_ashape_l = AbstractLinear(curr_ashape.y_greater).forward(
-        first_ashape
-    )
+    tmp_ashape_u = AbstractLinear(curr_ashape.y_less).forward(first_ashape)
+    tmp_ashape_l = AbstractLinear(curr_ashape.y_greater).forward(first_ashape)
     return tmp_ashape_u.upper, tmp_ashape_l.lower
+
 
 def recompute_bounds_conv(first_ashape, curr_ashape):
     kernel_lower = curr_ashape.y_greater[
@@ -45,7 +43,6 @@ def recompute_bounds_conv(first_ashape, curr_ashape):
         .diagonal(dim1=1, dim2=3)
         .diagonal(dim1=1, dim2=2)
     )
-
 
     kernel_upper = curr_ashape.y_less[
         :, :, :, 1:
@@ -71,29 +68,33 @@ def recompute_bounds_conv(first_ashape, curr_ashape):
 
     return new_u, new_l
 
+
 def recompute_bounds(first_ashape, curr_ashape, out_ashape):
     # Recompute l & u
     if isinstance(curr_ashape, LinearAbstractShape):
-        out_ashape.upper, out_ashape.lower = \
-            recompute_bounds_linear(first_ashape, curr_ashape)
+        out_ashape.upper, out_ashape.lower = recompute_bounds_linear(
+            first_ashape, curr_ashape
+        )
 
     elif isinstance(curr_ashape, ConvAbstractShape):
-        out_ashape.upper, out_ashape.lower = \
-            recompute_bounds_conv(first_ashape, curr_ashape)
+        out_ashape.upper, out_ashape.lower = recompute_bounds_conv(
+            first_ashape, curr_ashape
+        )
         if isinstance(out_ashape, LinearAbstractShape):
             out_ashape.upper = torch.squeeze(out_ashape.upper)
             out_ashape.lower = torch.squeeze(out_ashape.lower)
 
+
 class AbstractNetwork:
     def __init__(
-        self,
-        abstract_transformers: List,
-        checker:ANetChecker=None
+        self, abstract_transformers: List, checker: ANetChecker = None
     ) -> None:
         self.abstract_transformers = abstract_transformers
         self.checker = checker
 
-    def backsub(self, abstract_shape: AbstractShape, previous_shapes, check=False) -> AbstractShape:
+    def backsub(
+        self, abstract_shape: AbstractShape, previous_shapes, check=False
+    ) -> AbstractShape:
         curr_ashape = abstract_shape
         for i, previous_shape in enumerate(reversed(previous_shapes[1:])):
             if isinstance(curr_ashape, ConvAbstractShape):
@@ -104,7 +105,7 @@ class AbstractNetwork:
             curr_ashape = curr_ashape.backsub(previous_shape)
 
         if isinstance(curr_ashape, ConvAbstractShape):
-                curr_ashape = curr_ashape.zero_out_padding_weights()
+            curr_ashape = curr_ashape.zero_out_padding_weights()
         recompute_bounds(previous_shapes[0], curr_ashape, abstract_shape)
         if check:
             self.checker.recheck(abstract_shape)

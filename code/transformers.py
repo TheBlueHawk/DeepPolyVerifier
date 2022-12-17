@@ -66,11 +66,11 @@ class AbstractFlatten:
 
     def forward(self, x: AbstractShape) -> FlattenAbstractShape:
         return FlattenAbstractShape(
-            y_greater = None,
-            y_less = None,
-            lower = x.lower.flatten(),
-            upper = x.upper.flatten(),
-            original_shape = x.lower.shape
+            y_greater=None,
+            y_less=None,
+            lower=x.lower.flatten(),
+            upper=x.upper.flatten(),
+            original_shape=x.lower.shape,
         )
 
 
@@ -365,29 +365,45 @@ class AbstractResidualSum:
     def _init_from_layer(self):
         pass
 
+    # TODO: probably change a,b to ConvAS
     def forward(self, a: AbstractShape, b: AbstractShape) -> AbstractShape:
-        pass
+        # TODO: need of 4D tensor <batch_size, channels, height, width>: unsqueeze?
+        lower = a.lower + b.lower
+        uppper = a.upper + b.upper
+        # TODO: for backsub will need to compute also y_greater and y_less
+        return AbstractShape(None, None, lower, uppper)
 
 
 class AbstractBatchNorm:
     def __init__(self, *args) -> None:
-        if isinstance(args[0], nn.BasicBlock):
+        if isinstance(args[0], nn.BatchNorm2d):
             self._init_from_layer(*args)
 
         elif isinstance(args[0], torch.Tensor):
-            pass
+            raise NotImplementedError
             # self._init_from_tensor(*args)
-
         else:
             raise Exception(
                 "Invalid arguments passed to the initializer of AbstractLinear"
             )
 
-    def _init_from_layer(self):
+    def _init_from_layer(self, layer: nn.BatchNorm2d):
+        self.num_features = layer.num_features
+        self.running_mean = layer.running_mean
+        self.running_var = layer.running_var
+        # TODO: weights (gamma, beta) seems to be set to default, no need to retrieve them
+
+    def _init_from_values(*args):
         pass
 
-    def forward(self, x: AbstractShape) -> AbstractShape:
-        pass
+    def forward(self, x: ConvAbstractShape) -> AbstractShape:
+        # TODO: need of 4D tensor <batch_size, channels, height, width>: unsqueeze?
+        lower = F.batch_norm(x.lower, self.running_mean, self.running_var)
+        uppper = F.batch_norm(x.upper, self.running_mean, self.running_var)
+        # TODO: this is very likely wrong
+        y_greater = F.batch_norm(x.y_greater, self.running_mean, self.running_var)
+        y_less = F.batch_norm(x.y_less, self.running_mean, self.running_var)
+        return ConvAbstractShape(y_greater, y_less, lower, uppper)
 
 
 def conv_output_shape(h_w, kernel_size=1, stride=1, pad=0, dilation=1):
