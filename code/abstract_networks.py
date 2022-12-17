@@ -5,7 +5,6 @@ import torch
 from resnet import BasicBlock, ResNet
 from transformers import (
     AbstractBatchNorm,
-    AbstractBlock,
     AbstractConvolution,
     AbstractNormalize,
     AbstractFlatten,
@@ -597,9 +596,9 @@ class AbstractNet8(AbstractNetwork):
         self.relu1 = AbstractReLU()
 
         blockLayers1: torch.nn.Sequential = net.layers[3][0]
-        self.block1: AbstractBlock = AbstractBlock(blockLayers1.layer[0])
+        self.block1 = AbstractBlockSubnet(blockLayers1.layer[0])
         self.relu2 = AbstractReLU()
-        self.block2: AbstractBlock = AbstractBlock(blockLayers1.layer[3])
+        self.block2 = AbstractBlockSubnet(blockLayers1.layer[3])
         self.relu3 = AbstractReLU()
 
         self.flatten = AbstractFlatten()
@@ -666,22 +665,28 @@ class AbstractNet8(AbstractNetwork):
     def get_alphas(self) -> List[Tensor]:
         alphas = [
             self.relu1.alphas,
+            self.block1.relu1b.alphas,
             self.relu2.alphas,
+            self.block2.relu1b.alphas,
             self.relu3.alphas,
             self.relu4.alphas,
         ]
         return alphas
 
     def set_alphas(self, updated_alphas: List[Tensor]) -> List[Tensor]:
-        assert len(updated_alphas) == 4
+        assert len(updated_alphas) == 6
         assert self.relu1.alphas.shape == updated_alphas[0].shape
         self.relu1.alphas = updated_alphas[0]
-        assert self.relu2.alphas.shape == updated_alphas[1].shape
-        self.relu2.alphas = updated_alphas[1]
-        assert self.relu3.alphas.shape == updated_alphas[2].shape
-        self.relu3.alphas = updated_alphas[2]
-        assert self.relu4.alphas.shape == updated_alphas[3].shape
-        self.relu4.alphas = updated_alphas[3]
+        assert self.block1.relu1b.alphas.shape == updated_alphas[1].shape
+        self.block1.relu1b.alphas.shape = updated_alphas[1]
+        assert self.relu2.alphas.shape == updated_alphas[2].shape
+        self.relu2.alphas = updated_alphas[2]
+        assert self.block2.relu1b.alphas.shape == updated_alphas[3].shape
+        self.block2.relu1b.alphas.shape = updated_alphas[3]
+        assert self.relu3.alphas.shape == updated_alphas[4].shape
+        self.relu3.alphas = updated_alphas[4]
+        assert self.relu4.alphas.shape == updated_alphas[5].shape
+        self.relu4.alphas = updated_alphas[5]
 
 
 class AbstractNet9(AbstractNetwork):
@@ -691,11 +696,11 @@ class AbstractNet9(AbstractNetwork):
         self.relu1 = AbstractReLU()
 
         blockLayers1: torch.nn.Sequential = net.layers[4][0]
-        self.block1: AbstractBlock = AbstractBlock(blockLayers1.layer[0])
+        self.block1 = AbstractBlockSubnet(blockLayers1.layer[0])
         self.relu2 = AbstractReLU()
 
         blockLayers2: torch.nn.Sequential = net.layers[4][0]
-        self.block2: AbstractBlock = AbstractBlock(blockLayers2.layer[0])
+        self.block2 = AbstractBlockSubnet(blockLayers2.layer[0])
         self.relu3 = AbstractReLU()
 
         self.flatten = AbstractFlatten()
@@ -766,22 +771,28 @@ class AbstractNet9(AbstractNetwork):
     def get_alphas(self) -> List[Tensor]:
         alphas = [
             self.relu1.alphas,
+            self.block1.relu1b.alphas,
             self.relu2.alphas,
+            self.block2.relu1b.alphas,
             self.relu3.alphas,
             self.relu4.alphas,
         ]
         return alphas
 
     def set_alphas(self, updated_alphas: List[Tensor]) -> List[Tensor]:
-        assert len(updated_alphas) == 4
+        assert len(updated_alphas) == 6
         assert self.relu1.alphas.shape == updated_alphas[0].shape
         self.relu1.alphas = updated_alphas[0]
-        assert self.relu2.alphas.shape == updated_alphas[1].shape
-        self.relu2.alphas = updated_alphas[1]
-        assert self.relu3.alphas.shape == updated_alphas[2].shape
-        self.relu3.alphas = updated_alphas[2]
-        assert self.relu4.alphas.shape == updated_alphas[3].shape
-        self.relu4.alphas = updated_alphas[3]
+        assert self.block1.relu1b.alphas.shape == updated_alphas[1].shape
+        self.block1.relu1b.alphas.shape = updated_alphas[1]
+        assert self.relu2.alphas.shape == updated_alphas[2].shape
+        self.relu2.alphas = updated_alphas[2]
+        assert self.block2.relu1b.alphas.shape == updated_alphas[3].shape
+        self.block2.relu1b.alphas.shape = updated_alphas[3]
+        assert self.relu3.alphas.shape == updated_alphas[4].shape
+        self.relu3.alphas = updated_alphas[4]
+        assert self.relu4.alphas.shape == updated_alphas[5].shape
+        self.relu4.alphas = updated_alphas[5]
 
 
 class AbstractNet10(AbstractNetwork):
@@ -790,15 +801,15 @@ class AbstractNet10(AbstractNetwork):
         self.relu1 = AbstractReLU()
 
         blockLayers1: torch.nn.Sequential = net.layers[3][0]
-        self.block1: AbstractBlock = AbstractBlock(blockLayers1.layer[0])
+        self.block1 = AbstractBlockSubnet(blockLayers1.layer[0])
         self.relu2 = AbstractReLU()
-        self.block2: AbstractBlock = AbstractBlock(blockLayers1.layer[3])
+        self.block2 = AbstractBlockSubnet(blockLayers1.layer[3])
         self.relu3 = AbstractReLU()
 
         blockLayers2: torch.nn.Sequential = net.layers[4][0]
-        self.block3: AbstractBlock = AbstractBlock(blockLayers2.layer[0])
+        self.block3 = AbstractBlockSubnet(blockLayers2.layer[0])
         self.relu4 = AbstractReLU()
-        self.block4: AbstractBlock = AbstractBlock(blockLayers2.layer[3])
+        self.block4 = AbstractBlockSubnet(blockLayers2.layer[3])
         self.relu5 = AbstractReLU()
 
         self.flatten = AbstractFlatten()
@@ -883,26 +894,40 @@ class AbstractNet10(AbstractNetwork):
     def get_alphas(self) -> List[Tensor]:
         alphas = [
             self.relu1.alphas,
+            self.block1.relu1b.alphas,
             self.relu2.alphas,
+            self.block2.relu1b.alphas,
             self.relu3.alphas,
+            self.block3.relu1b.alphas,
             self.relu4.alphas,
+            self.block4.relu1b.alphas,
+            self.relu5.alphas,
+            self.relu6.alphas,
         ]
         return alphas
 
     def set_alphas(self, updated_alphas: List[Tensor]) -> List[Tensor]:
-        assert len(updated_alphas) == 4
+        assert len(updated_alphas) == 10
         assert self.relu1.alphas.shape == updated_alphas[0].shape
         self.relu1.alphas = updated_alphas[0]
-        assert self.relu2.alphas.shape == updated_alphas[1].shape
-        self.relu2.alphas = updated_alphas[1]
-        assert self.relu3.alphas.shape == updated_alphas[2].shape
-        self.relu3.alphas = updated_alphas[2]
-        assert self.relu4.alphas.shape == updated_alphas[3].shape
-        self.relu4.alphas = updated_alphas[3]
-        assert self.relu5.alphas.shape == updated_alphas[4].shape
-        self.relu5.alphas = updated_alphas[4]
-        assert self.relu6.alphas.shape == updated_alphas[5].shape
-        self.relu6.alphas = updated_alphas[5]
+        assert self.block1.relu1b.alphas.shape == updated_alphas[1].shape
+        self.block1.relu1b.alphas.shape = updated_alphas[1]
+        assert self.relu2.alphas.shape == updated_alphas[2].shape
+        self.relu2.alphas = updated_alphas[2]
+        assert self.block2.relu1b.alphas.shape == updated_alphas[3].shape
+        self.block2.relu1b.alphas.shape = updated_alphas[3]
+        assert self.relu3.alphas.shape == updated_alphas[4].shape
+        self.relu3.alphas = updated_alphas[4]
+        assert self.block3.relu1b.alphas.shape == updated_alphas[5].shape
+        self.block3.relu1b.alphas.shape = updated_alphas[5]
+        assert self.relu4.alphas.shape == updated_alphas[6].shape
+        self.relu4.alphas = updated_alphas[6]
+        assert self.block4.relu1b.alphas.shape == updated_alphas[7].shape
+        self.block4.relu1b.alphas.shape = updated_alphas[7]
+        assert self.relu5.alphas.shape == updated_alphas[8].shape
+        self.relu5.alphas = updated_alphas[8]
+        assert self.relu6.alphas.shape == updated_alphas[9].shape
+        self.relu6.alphas = updated_alphas[9]
 
 
 class AbstractBlockSubnet(AbstractNetwork):
@@ -981,16 +1006,3 @@ class AbstractBlockSubnet(AbstractNetwork):
         abstract_shape = self.res_sum.forward(abstract_shape_a, abstract_shape_b)
         self.checker.check_next(abstract_shape)
         return abstract_shape
-
-    def get_alphas(self) -> List[Tensor]:
-        alphas = [self.relu1b.alphas]
-        return alphas
-
-    def set_alphas(self, updated_alphas: List[Tensor]) -> List[Tensor]:
-        assert len(updated_alphas) == 1
-        assert self.relu1.alphas.shape == updated_alphas[0].shape
-        self.relu1b.alphas = updated_alphas[0]
-
-
-# TODO: ALPHAS
-# get / set alphas of blocks in net8,9,10
