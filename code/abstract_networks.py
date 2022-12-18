@@ -13,6 +13,7 @@ from transformers import (
     AbstractResidualSum,
 )
 from anet_checkers import ANetChecker
+from networks import NormalizedResnet
 
 
 def recompute_bounds_linear(first_ashape, curr_ashape):
@@ -636,20 +637,23 @@ class AbstractNet7(AbstractNetwork):
 
 
 class AbstractNet8(AbstractNetwork):
-    def __init__(self, net, checker) -> None:
-        self.conv1 = AbstractConvolution(net.layers[1])
+    def __init__(self, net: NormalizedResnet, checker) -> None:
+        self.normalize = AbstractNormalize(net.normalization)
+        resnet = net.resnet
+
+        self.conv1 = AbstractConvolution(resnet[0])
         self.relu1 = AbstractReLU()
 
-        blockLayers1: torch.nn.Sequential = net.layers[3][0]
-        self.block1 = AbstractBlockSubnet(blockLayers1.layer[0])
+        blockLayers1: torch.nn.Sequential = resnet[2]
+        self.block1 = AbstractBlockSubnet(blockLayers1[0], checker)
         self.relu2 = AbstractReLU()
-        self.block2 = AbstractBlockSubnet(blockLayers1.layer[3])
+        self.block2 = AbstractBlockSubnet(blockLayers1[2], checker)
         self.relu3 = AbstractReLU()
 
         self.flatten = AbstractFlatten()
-        self.lin1 = AbstractLinear(net.layers[5])
+        self.lin1 = AbstractLinear(resnet[4])
         self.relu4 = AbstractReLU()
-        self.lin2 = AbstractLinear(net.layers[7])
+        self.lin2 = AbstractLinear(resnet[6])
         self.final_atransformer = None  # built in forward
 
         self.checker = checker
@@ -658,6 +662,10 @@ class AbstractNet8(AbstractNetwork):
         self.final_atransformer = self.buildFinalLayer(true_label, N)
         prev_abstract_shapes = []
         self.checker.check_next(abstract_shape)
+
+        abstract_shape = self.normalize.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.conv1.forward(abstract_shape)
         self.checker.check_next(abstract_shape)
@@ -735,23 +743,26 @@ class AbstractNet8(AbstractNetwork):
 
 
 class AbstractNet9(AbstractNetwork):
-    def __init__(self, net, checker) -> None:
-        self.conv1 = AbstractConvolution(net.layers[1])
-        self.bn1 = AbstractBatchNorm(net.layers[2])
+    def __init__(self, net: NormalizedResnet, checker) -> None:
+        self.normalize = AbstractNormalize(net.normalization)
+        resnet: ResNet = net.resnet
+
+        self.conv1 = AbstractConvolution(resnet[0])
+        self.bn1 = AbstractBatchNorm(resnet[1])
         self.relu1 = AbstractReLU()
 
-        blockLayers1: torch.nn.Sequential = net.layers[4][0]
-        self.block1 = AbstractBlockSubnet(blockLayers1.layer[0])
+        blockLayers1: torch.nn.Sequential = resnet[3]
+        self.block1 = AbstractBlockSubnet(blockLayers1[0], checker)
         self.relu2 = AbstractReLU()
 
-        blockLayers2: torch.nn.Sequential = net.layers[4][0]
-        self.block2 = AbstractBlockSubnet(blockLayers2.layer[0])
+        blockLayers2: torch.nn.Sequential = resnet[4]
+        self.block2 = AbstractBlockSubnet(blockLayers2[0], checker)
         self.relu3 = AbstractReLU()
 
         self.flatten = AbstractFlatten()
-        self.lin1 = AbstractLinear(net.layers[6])
+        self.lin1 = AbstractLinear(resnet[6])
         self.relu4 = AbstractReLU()
-        self.lin2 = AbstractLinear(net.layers[8])
+        self.lin2 = AbstractLinear(resnet[8])
         self.final_atransformer = None  # built in forward
 
         self.checker = checker
@@ -760,6 +771,10 @@ class AbstractNet9(AbstractNetwork):
         self.final_atransformer = self.buildFinalLayer(true_label, N)
         prev_abstract_shapes = []
         self.checker.check_next(abstract_shape)
+
+        abstract_shape = self.normalize.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.conv1.forward(abstract_shape)
         self.checker.check_next(abstract_shape)
@@ -841,26 +856,29 @@ class AbstractNet9(AbstractNetwork):
 
 
 class AbstractNet10(AbstractNetwork):
-    def __init__(self, net, checker) -> None:
-        self.conv1 = AbstractConvolution(net.layers[1])
+    def __init__(self, net: NormalizedResnet, checker) -> None:
+        self.normalize = AbstractNormalize(net.normalization)
+        resnet: ResNet = net.resnet
+
+        self.conv1 = AbstractConvolution(resnet[0])
         self.relu1 = AbstractReLU()
 
-        blockLayers1: torch.nn.Sequential = net.layers[3][0]
-        self.block1 = AbstractBlockSubnet(blockLayers1.layer[0])
+        blockLayers1: torch.nn.Sequential = resnet[2]
+        self.block1 = AbstractBlockSubnet(blockLayers1[0], checker)
         self.relu2 = AbstractReLU()
-        self.block2 = AbstractBlockSubnet(blockLayers1.layer[3])
+        self.block2 = AbstractBlockSubnet(blockLayers1[2], checker)
         self.relu3 = AbstractReLU()
 
-        blockLayers2: torch.nn.Sequential = net.layers[4][0]
-        self.block3 = AbstractBlockSubnet(blockLayers2.layer[0])
+        blockLayers2: torch.nn.Sequential = resnet[3]
+        self.block3 = AbstractBlockSubnet(blockLayers2[0], checker)
         self.relu4 = AbstractReLU()
-        self.block4 = AbstractBlockSubnet(blockLayers2.layer[3])
+        self.block4 = AbstractBlockSubnet(blockLayers2[2], checker)
         self.relu5 = AbstractReLU()
 
         self.flatten = AbstractFlatten()
-        self.lin1 = AbstractLinear(net.layers[6])
+        self.lin1 = AbstractLinear(resnet[5])
         self.relu6 = AbstractReLU()
-        self.lin2 = AbstractLinear(net.layers[8])
+        self.lin2 = AbstractLinear(resnet[7])
         self.final_atransformer = None  # built in forward
 
         self.checker = checker
@@ -869,6 +887,10 @@ class AbstractNet10(AbstractNetwork):
         self.final_atransformer = self.buildFinalLayer(true_label, N)
         prev_abstract_shapes = []
         self.checker.check_next(abstract_shape)
+
+        abstract_shape = self.normalize.forward(abstract_shape)
+        self.checker.check_next(abstract_shape)
+        prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.conv1.forward(abstract_shape)
         self.checker.check_next(abstract_shape)

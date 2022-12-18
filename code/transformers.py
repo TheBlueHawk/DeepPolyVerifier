@@ -226,7 +226,6 @@ class AbstractConvolution:
 
     def _init_from_layer(self, convLayer):
         self.kernel: Tensor = convLayer.weight.data  # [c_out, k_h, k_w, c_in]
-        self.bias = convLayer.bias.data  # [c_out]
         assert self.kernel.shape[3] == self.kernel.shape[2]
         self.k = self.kernel.shape[3]
         assert convLayer.kernel_size == (self.k, self.k)
@@ -238,6 +237,10 @@ class AbstractConvolution:
         self.padding: int = convLayer.padding[0]
         assert convLayer.dilation[0] == convLayer.dilation[1]
         self.dilation: int = convLayer.dilation[0]
+        if convLayer.bias is None:
+            self.bias = Tensor([0] * self.c_out)  # [c_out]
+        else:
+            self.bias = convLayer.bias.data  # [c_out]
         self.N = None
 
     def forward(
@@ -298,18 +301,20 @@ class AbstractConvolution:
             k_flat > 0, u_unfold.swapdims(-1, -2), l_unfold.swapdims(-1, -2)
         )  # [self.c_out, n_possible_kernel_positions, self.w * self.h * self.c_in]
 
+        new_l = torch.sum(l_cube * k_flat, dim=-1).view(
+            self.c_out, h_out, w_out
+        )  # [self.c_out, h_out, w_out]
+
+        new_u = torch.sum(u_cube * k_flat, dim=-1).view(
+            self.c_out, h_out, w_out
+        )  # [self.c_out, h_out, w_out]
+
         expanded_bias = self.bias.reshape(-1, 1, 1).repeat(
             1,
             self.N,
             self.N,
         )  # [c_out, N, N]
-        new_l = torch.sum(l_cube * k_flat, dim=-1).view(
-            self.c_out, h_out, w_out
-        )  # [self.c_out, h_out, w_out]
         new_l += expanded_bias
-        new_u = torch.sum(u_cube * k_flat, dim=-1).view(
-            self.c_out, h_out, w_out
-        )  # [self.c_out, h_out, w_out]
         new_u += expanded_bias
 
         y_greater_one_neuron = (
@@ -350,19 +355,6 @@ class AbstractConvolution:
 
 class AbstractResidualSum:
     def __init__(self, *args) -> None:
-        if isinstance(args[0], nn.BasicBlock):
-            self._init_from_layer(*args)
-
-        elif isinstance(args[0], torch.Tensor):
-            pass
-            # self._init_from_tensor(*args)
-
-        else:
-            raise Exception(
-                "Invalid arguments passed to the initializer of AbstractLinear"
-            )
-
-    def _init_from_layer(self):
         pass
 
     # TODO: probably change a,b to ConvAS
