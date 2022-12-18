@@ -358,12 +358,14 @@ class AbstractResidualSum:
         pass
 
     # TODO: probably change a,b to ConvAS
-    def forward(self, a: AbstractShape, b: AbstractShape) -> AbstractShape:
+    def forward(
+        self, a: ConvAbstractShape, b: ConvAbstractShape
+    ) -> LinearAbstractShape:
         # TODO: need of 4D tensor <batch_size, channels, height, width>: unsqueeze?
         lower = a.lower + b.lower
         uppper = a.upper + b.upper
         # TODO: for backsub will need to compute also y_greater and y_less
-        return AbstractShape(None, None, lower, uppper)
+        return LinearAbstractShape(None, None, lower, uppper)
 
 
 class AbstractBatchNorm:
@@ -388,14 +390,21 @@ class AbstractBatchNorm:
     def _init_from_values(*args):
         pass
 
-    def forward(self, x: ConvAbstractShape) -> AbstractShape:
-        # TODO: need of 4D tensor <batch_size, channels, height, width>: unsqueeze?
-        lower = F.batch_norm(x.lower, self.running_mean, self.running_var)
-        uppper = F.batch_norm(x.upper, self.running_mean, self.running_var)
-        # TODO: this is very likely wrong
+    def forward(self, x: ConvAbstractShape) -> ConvAbstractShape:
+        assert x.lower.shape[0] == self.running_mean.shape[0]
+        assert x.upper.shape[0] == self.running_mean.shape[0]
+        lower = F.batch_norm(
+            x.lower.unsqueeze(0), self.running_mean, self.running_var
+        ).squeeze(0)
+        uppper = F.batch_norm(
+            x.upper.unsqueeze(0), self.running_mean, self.running_var
+        ).squeeze(0)
+        # TODO: dimensions over which bn is computed are very likely wrong --> need unit test
         y_greater = F.batch_norm(x.y_greater, self.running_mean, self.running_var)
         y_less = F.batch_norm(x.y_less, self.running_mean, self.running_var)
-        return ConvAbstractShape(y_greater, y_less, lower, uppper)
+        return ConvAbstractShape(
+            y_greater, y_less, lower, uppper, x.c_in, x.n_in, x.k, x.padding, x.stride
+        )
 
 
 def conv_output_shape(h_w, kernel_size=1, stride=1, pad=0, dilation=1):
