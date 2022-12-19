@@ -18,6 +18,7 @@ from abstract_shape import (
     LinearAbstractShape,
     ConvAbstractShape,
     FlattenAbstractShape,
+    ResidualAbstractShape,
     create_abstract_input_shape,
 )
 
@@ -122,7 +123,7 @@ class AbstractReLU:
                 x.lower,
                 x.upper,
             )
-        elif isinstance(x, ConvAbstractShape):
+        elif isinstance(x, ConvAbstractShape) or isinstance(x, ResidualAbstractShape):
             lower = x.lower.flatten()
             upper = x.upper.flatten()
             flat_ashape = self.flat_forward(lower, upper)
@@ -353,21 +354,6 @@ class AbstractConvolution:
         return l_i
 
 
-class AbstractResidualSum:
-    def __init__(self, *args) -> None:
-        pass
-
-    # TODO: probably change a,b to ConvAS
-    def forward(
-        self, a: ConvAbstractShape, b: ConvAbstractShape
-    ) -> LinearAbstractShape:
-        # TODO: need of 4D tensor <batch_size, channels, height, width>: unsqueeze?
-        lower = a.lower + b.lower
-        uppper = a.upper + b.upper
-        # TODO: for backsub will need to compute also y_greater and y_less
-        return LinearAbstractShape(None, None, lower, uppper)
-
-
 class AbstractBatchNorm:
     def __init__(self, *args) -> None:
         if isinstance(args[0], nn.BatchNorm2d):
@@ -382,28 +368,46 @@ class AbstractBatchNorm:
             )
 
     def _init_from_layer(self, layer: nn.BatchNorm2d):
-        self.num_features = layer.num_features
-        self.running_mean = layer.running_mean
-        self.running_var = layer.running_var
-        # TODO: weights (gamma, beta) seems to be set to default, no need to retrieve them
+        self.num_features = layer.num_features  # C
+        self.running_mean = layer.running_mean  # <C>
+        self.running_var = layer.running_var  # <C>
+        self.gamma = layer.weight  # <C>
+        self.beta = layer.bias  # <C>
+        self.eps = layer.eps
 
     def _init_from_values(*args):
         pass
 
+    def normalize(self, x: Tensor) -> Tensor:
+        x_shape = x.shape
+        running_mean = (
+            self.running_mean.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
+        ).expand(x_shape[0], x_shape[1], x_shape[2], x_shape[3])
+
+        running_var = (
+            self.running_var.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
+        ).expand(x_shape[0], x_shape[1], x_shape[2], x_shape[3])
+
+        gamma = (self.gamma.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)).expand(
+            x_shape[0], x_shape[1], x_shape[2], x_shape[3]
+        )
+
+        beta = (self.beta.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)).expand(
+            x_shape[0], x_shape[1], x_shape[2], x_shape[3]
+        )
+
+        return ((x - running_mean) / (running_var + self.eps)) * gamma + beta
+
     def forward(self, x: ConvAbstractShape) -> ConvAbstractShape:
         assert x.lower.shape[0] == self.running_mean.shape[0]
         assert x.upper.shape[0] == self.running_mean.shape[0]
-        lower = F.batch_norm(
-            x.lower.unsqueeze(0), self.running_mean, self.running_var
-        ).squeeze(0)
-        uppper = F.batch_norm(
-            x.upper.unsqueeze(0), self.running_mean, self.running_var
-        ).squeeze(0)
-        # TODO: dimensions over which bn is computed are very likely wrong --> need unit test
-        y_greater = F.batch_norm(x.y_greater, self.running_mean, self.running_var)
-        y_less = F.batch_norm(x.y_less, self.running_mean, self.running_var)
+
+        lower = self.normalize(x.lower.unsqueeze(-1)).squeeze(-1)
+        upper = self.normalize(x.upper.unsqueeze(-1)).squeeze(-1)
+        y_greater = self.normalize(x.y_greater)
+        y_less = self.normalize(x.y_less)
         return ConvAbstractShape(
-            y_greater, y_less, lower, uppper, x.c_in, x.n_in, x.k, x.padding, x.stride
+            y_greater, y_less, lower, upper, x.c_in, x.n_in, x.k, x.padding, x.stride
         )
 
 

@@ -69,9 +69,9 @@ class LinearAbstractShape(AbstractShape):
         greater_backsub_cube = buildConstraints3DMatrix(
             self.y_greater,
             previous_abstract_shape.y_greater,
-            previous_abstract_shape.y_less
+            previous_abstract_shape.y_less,
         )
-        
+
         bias_greater = self.y_greater[:, 0]
         weights_greater = self.y_greater[:, 1:].unsqueeze(1)
         new_greater = (weights_greater @ greater_backsub_cube).squeeze()
@@ -81,9 +81,9 @@ class LinearAbstractShape(AbstractShape):
         less_backsub_cube = buildConstraints3DMatrix(
             self.y_less,
             previous_abstract_shape.y_less,
-            previous_abstract_shape.y_greater
+            previous_abstract_shape.y_greater,
         )
-        
+
         bias_less = self.y_less[:, 0]
         weights_less = self.y_less[:, 1:].unsqueeze(1)
         new_less = (weights_less @ less_backsub_cube).squeeze()
@@ -201,28 +201,33 @@ class ConvAbstractShape(AbstractShape):
             kernel_size=self.k,
             dilation=1,
             padding=self.padding,
-            stride=self.stride
+            stride=self.stride,
         )
 
-        unfolded_bitmask = unfolded_bitmask\
-                            .squeeze(dim=0)\
-                            .swapaxes(0, 1)\
-                            .reshape(N, N, -1)\
-                            .unsqueeze(0)
-        unfolded_bitmask = torch.cat([torch.ones(*unfolded_bitmask.shape[:-1], 1), 
-                            unfolded_bitmask], axis=3)
+        unfolded_bitmask = (
+            unfolded_bitmask.squeeze(dim=0)
+            .swapaxes(0, 1)
+            .reshape(N, N, -1)
+            .unsqueeze(0)
+        )
+        unfolded_bitmask = torch.cat(
+            [torch.ones(*unfolded_bitmask.shape[:-1], 1), unfolded_bitmask], axis=3
+        )
 
         new_y_greater = self.y_greater * unfolded_bitmask
         new_y_less = self.y_less * unfolded_bitmask
 
         return ConvAbstractShape(
-            y_greater=new_y_greater, 
-            y_less=new_y_less, 
-            lower=None,#self.lower.clone(), 
-            upper=None,#self.upper.clone(), 
-            c_in=self.c_in, 
-            n_in=self.n_in, 
-            k=self.k, padding=self.padding, stride=self.stride)
+            y_greater=new_y_greater,
+            y_less=new_y_less,
+            lower=None,  # self.lower.clone(),
+            upper=None,  # self.upper.clone(),
+            c_in=self.c_in,
+            n_in=self.n_in,
+            k=self.k,
+            padding=self.padding,
+            stride=self.stride,
+        )
 
     def backsub(self, previous_abstract_shape: AbstractShape) -> ConvAbstractShape:
         if isinstance(previous_abstract_shape, ReluAbstractShape):
@@ -375,7 +380,6 @@ class ConvAbstractShape(AbstractShape):
             (bias.unsqueeze(-1), composed_kernel), -1
         )  # <C, N, N, C2 * H_out * W_out + 1>
 
-
         ### y_less ###
         # Separate bias and reshape as <batchdim=C*N*N, kernel dims>
         inputs = cur_y_less[:, :, :, 1:].reshape(
@@ -439,13 +443,30 @@ class FlattenAbstractShape(AbstractShape):
         upper: Tensor,
         original_shape,
     ) -> None:
-        super().__init__(
-            y_greater=y_greater, 
-            y_less=y_less, 
-            lower=lower, 
-            upper=upper
-        )
+        super().__init__(y_greater=y_greater, y_less=y_less, lower=lower, upper=upper)
         self.original_shape = original_shape
+
+    def backsub(self, previous_abstract_shape):
+        pass
+
+
+class ResidualAbstractShape(AbstractInputShape):
+    def __init__(
+        self,
+        y_greater: Tensor,
+        y_less: Tensor,
+        lower: Tensor,
+        upper: Tensor,
+        conv1a: ConvAbstractShape,
+        bn1a: ConvAbstractShape,
+        conv1b: ConvAbstractShape,
+        bn1b: ConvAbstractShape,
+        relu1b: ReluAbstractShape,
+        conv2b: ConvAbstractShape,
+        bn2b: ConvAbstractShape,
+    ) -> None:
+        super().__init__(y_greater, y_less, lower, upper)
+        # TODO
 
     def backsub(self, previous_abstract_shape):
         pass
@@ -461,7 +482,9 @@ def create_abstract_input_shape(inputs, eps, bounds=(0, 1)) -> AbstractShape:
 
 
 def buildConstraints3DMatrix(
-    cur_weights: Tensor, fst_choice, snd_choice,
+    cur_weights: Tensor,
+    fst_choice,
+    snd_choice,
 ) -> Tensor:
     """
     Where cur_weighs >= 0 takes fst_choice, otherwise takes snd_choice.
@@ -476,11 +499,7 @@ def buildConstraints3DMatrix(
     # N = curr_y_greater.shape[0]  # n_neurons_current_layer
     # N1 = curr_y_greater.shape[1]  # n_neurons_prev_layer
     # N2 = prev_y_greater.shape[1]  # n_neurons_prev_prev_layer
-    assert (
-        cur_weights.shape[1] - 1
-        == fst_choice.shape[0]
-        == snd_choice.shape[0]
-    )
+    assert cur_weights.shape[1] - 1 == fst_choice.shape[0] == snd_choice.shape[0]
     # curr_b = curr_y_greater[:, 0].unsqueeze(1)  # shape: [N, 1, 1]
     # bias = torch.concat((curr_b, torch.zeros(N, N2, 1)), dim=1)  # shape: [N, N2+1, 1]
     alphas = cur_weights[:, 1:].unsqueeze(1)  # shape: [N, 1, N1]
@@ -488,6 +507,7 @@ def buildConstraints3DMatrix(
         alphas.swapdims(1, 2) >= 0, fst_choice, snd_choice
     )  # shape: [N, N1, N2 + 1]
     return cube
+
 
 # def buildConstraints3DMatrix(
 #     current_layer_ashape: AbstractShape, previous_layer_ashape: AbstractShape
