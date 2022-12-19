@@ -216,8 +216,6 @@ class AbstractConvolution:
         dilation=1,
     ):
         self.kernel: Tensor = kernel  # [c_out, c_in, k_h, k_w]
-        self.bias: Tensor = bias  # [c_out]
-        assert self.bias.dim() == 1
         assert self.kernel.shape[3] == self.kernel.shape[2]
         self.k: int = self.kernel.shape[2]
         self.c_in: int = self.kernel.shape[1]
@@ -225,6 +223,11 @@ class AbstractConvolution:
         self.stride: int = stride
         self.padding: int = padding
         self.dilation: int = dilation
+        if bias is None:
+            self.bias: Tensor = Tensor([0] * self.c_out)  # [c_out]
+        else:
+            assert self.bias.dim() == 1
+            self.bias = bias  # [c_out]
         self.N = None
 
     def _init_from_layer(self, convLayer):

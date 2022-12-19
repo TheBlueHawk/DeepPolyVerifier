@@ -231,6 +231,8 @@ class ConvAbstractShape(AbstractShape):
             return self.backsub_relu(previous_abstract_shape)
         elif isinstance(previous_abstract_shape, ConvAbstractShape):
             return self.backsub_conv(previous_abstract_shape)
+        elif isinstance(previous_abstract_shape, ResidualAbstractShape):
+            return self.backsub_res(previous_abstract_shape)
         else:
             raise TypeError(type(previous_abstract_shape))
 
@@ -429,6 +431,10 @@ class ConvAbstractShape(AbstractShape):
             stride=S2,
         )
 
+    def backsub_res(self, previous_shape: ResidualAbstractShape) -> ConvAbstractShape:
+        # TODO
+        pass
+
 
 class FlattenAbstractShape(AbstractShape):
     def __init__(
@@ -463,9 +469,7 @@ class ResidualAbstractShape(AbstractInputShape):
     ) -> None:
         super().__init__(y_greater, y_less, lower, upper)
         # Path a
-        if conv1a is None:
-            self.conv1_bn_a = None
-        elif bn1a is None:
+        if bn1a is None:
             self.conv1_bn_a = conv1a
         else:
             self.conv1_bn_a = bn1a
@@ -485,10 +489,7 @@ class ResidualAbstractShape(AbstractInputShape):
         return abstract_shape
 
     def internal_backsub(self, previous_abstract_shape) -> ConvAbstractShape:
-        if self.conv1_bn_a is None:
-            backsub_path_a = self.get_id_conv()
-        else:
-            backsub_path_a = self.conv1_bn_a
+        backsub_path_a = self.conv1_bn_a
         backsub_path_b = self.conv2_bn_b.backsub(self.relu1b)
         backsub_path_b = backsub_path_b.backsub(self.conv1_bn_b)
         merged_abstract_shape = self.merge(backsub_path_a, backsub_path_b)
@@ -527,9 +528,6 @@ class ResidualAbstractShape(AbstractInputShape):
 
         ineq_comb = torch.concat([bias_comb, weights_comb], axis=3)
         return ineq_comb
-
-    def get_id_conv() -> ConvAbstractShape:
-        pass
 
 
 def create_abstract_input_shape(inputs, eps, bounds=(0, 1)) -> AbstractShape:
