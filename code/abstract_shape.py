@@ -497,7 +497,36 @@ class ResidualAbstractShape(AbstractInputShape):
     def merge(
         self, a: Optional[ConvAbstractShape], b: ConvAbstractShape
     ) -> ConvAbstractShape:
-        pass
+        # Kernel in b is larger than the kernel in a
+        return ConvAbstractShape(
+            y_greater = self.submerge(a.y_greater, b.y_greater, a.c_in, a.k, b.k),
+            y_less = self.submerge(a.y_less, b.y_less, a.c_in, a.k, b.k),
+            lower = None,
+            upper = None,
+            c_in = b.c_in,
+            n_in = b.n_in,
+            k = b.n_in,
+            padding = b.padding,
+            stride = b.stride
+        )
+
+    def submerge(self, ineq_a, ineq_b, c_in, ka, kb):
+        """Merges y_greater or y_lower from 2 abstract shapes"""
+        bias_a = ineq_a[..., 0:1]
+        bias_b = ineq_b[..., 0:1]
+        bias_comb = bias_a + bias_b
+        
+        weights_a = ineq_a[..., 1:]
+        weights_b = ineq_b[..., 1:]
+        
+        weights_a = weights_a.reshape(*weights_a.shape[:-1], c_in, ka, ka)
+        pad = (kb - ka) / 2
+        weights_a_expanded = F.pad(weights_a, (pad, pad, pad, pad))
+        weights_a_expanded = weights_a_expanded.flatten(start_dim=3, end_dim=5)
+        weights_comb = weights_a_expanded + weights_b
+
+        ineq_comb = torch.concat([bias_comb, weights_comb], axis=3)
+        return ineq_comb
 
     def get_id_conv() -> ConvAbstractShape:
         pass
