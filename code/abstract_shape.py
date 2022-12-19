@@ -432,8 +432,20 @@ class ConvAbstractShape(AbstractShape):
         )
 
     def backsub_res(self, previous_shape: ResidualAbstractShape) -> ConvAbstractShape:
-        # TODO
-        pass
+        # Path a
+        backsub_path_a = self.backsub(previous_shape.conv1_bn_a)
+        backsub_path_a = backsub_path_a.zero_out_padding_weights()
+        # Remove current conv bias to avoid double counting
+        self.y_greater[:, :, :, 0] = 0
+        self.y_less[:, :, :, 0] = 0
+        # Path b
+        backsub_path_b = self.backsub(previous_shape.conv2_bn_b)
+        backsub_path_b = backsub_path_b.zero_out_padding_weights()
+        backsub_path_b = backsub_path_b.backsub(previous_shape.relu1b)
+        backsub_path_b = backsub_path_b.backsub(previous_shape.conv1_bn_b)
+        backsub_path_b = backsub_path_b.zero_out_padding_weights()
+        merged_abstract_shape = previous_shape.merge(backsub_path_a, backsub_path_b)
+        return merged_abstract_shape
 
 
 class FlattenAbstractShape(AbstractShape):
@@ -488,27 +500,27 @@ class ResidualAbstractShape(AbstractInputShape):
         abstract_shape = temp_convAS.backsub(previous_abstract_shape)
         return abstract_shape
 
-    def internal_backsub(self, previous_abstract_shape) -> ConvAbstractShape:
+    def internal_backsub(
+        self,
+    ) -> ConvAbstractShape:
         backsub_path_a = self.conv1_bn_a
         backsub_path_b = self.conv2_bn_b.backsub(self.relu1b)
         backsub_path_b = backsub_path_b.backsub(self.conv1_bn_b)
         merged_abstract_shape = self.merge(backsub_path_a, backsub_path_b)
         return merged_abstract_shape
 
-    def merge(
-        self, a: Optional[ConvAbstractShape], b: ConvAbstractShape
-    ) -> ConvAbstractShape:
+    def merge(self, a: ConvAbstractShape, b: ConvAbstractShape) -> ConvAbstractShape:
         # Kernel in b is larger than the kernel in a
         return ConvAbstractShape(
-            y_greater = self.submerge(a.y_greater, b.y_greater, a.c_in, a.k, b.k),
-            y_less = self.submerge(a.y_less, b.y_less, a.c_in, a.k, b.k),
-            lower = None,
-            upper = None,
-            c_in = b.c_in,
-            n_in = b.n_in,
-            k = b.n_in,
-            padding = b.padding,
-            stride = b.stride
+            y_greater=self.submerge(a.y_greater, b.y_greater, a.c_in, a.k, b.k),
+            y_less=self.submerge(a.y_less, b.y_less, a.c_in, a.k, b.k),
+            lower=None,
+            upper=None,
+            c_in=b.c_in,
+            n_in=b.n_in,
+            k=b.n_in,
+            padding=b.padding,
+            stride=b.stride,
         )
 
     def submerge(self, ineq_a, ineq_b, c_in, ka, kb):
@@ -516,10 +528,10 @@ class ResidualAbstractShape(AbstractInputShape):
         bias_a = ineq_a[..., 0:1]
         bias_b = ineq_b[..., 0:1]
         bias_comb = bias_a + bias_b
-        
+
         weights_a = ineq_a[..., 1:]
         weights_b = ineq_b[..., 1:]
-        
+
         weights_a = weights_a.reshape(*weights_a.shape[:-1], c_in, ka, ka)
         pad = (kb - ka) / 2
         weights_a_expanded = F.pad(weights_a, (pad, pad, pad, pad))

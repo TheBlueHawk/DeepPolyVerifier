@@ -1036,8 +1036,8 @@ class AbstractBlockSubnet(AbstractNetwork):
     def forward(
         self, abstract_shape: ReluAbstractShape, previous_shapes: List[AbstractShape]
     ) -> ResidualAbstractShape:
-        prev_abstract_shapes_a = previous_shapes
-        prev_abstract_shapes_b = previous_shapes
+        prev_abstract_shapes_a = previous_shapes.copy()
+        prev_abstract_shapes_b = previous_shapes.copy()
         abstract_shape_a = abstract_shape
         abstract_shape_b = abstract_shape
         self.checker.check_next(abstract_shape)
@@ -1046,7 +1046,6 @@ class AbstractBlockSubnet(AbstractNetwork):
         # conv1a
         abstract_shape_a = self.conv1a.forward(abstract_shape_a)
         self.checker.check_next(abstract_shape_a)
-        # bn1a
         if self.bn:
             abstract_shape_a = self.bn1a.forward(abstract_shape_a)
             self.checker.check_next(abstract_shape_a)
@@ -1057,13 +1056,13 @@ class AbstractBlockSubnet(AbstractNetwork):
         # Path B
         # conv1b
         abstract_shape_b = self.conv1b.forward(abstract_shape_b)
-        # abstract_shape_b = self.backsub(abstract_shape_b, prev_abstract_shapes_b)
+        abstract_shape_b = self.backsub(abstract_shape_b, prev_abstract_shapes_b)
         self.checker.check_next(abstract_shape_b)
-        prev_abstract_shapes_b.append(abstract_shape_b)
-        # bn1b
         if self.bn:
             abstract_shape_b = self.bn1b.forward(abstract_shape_b)
             self.checker.check_next(abstract_shape_b)
+            prev_abstract_shapes_b.append(abstract_shape_b)
+        else:
             prev_abstract_shapes_b.append(abstract_shape_b)
         # relu1b
         abstract_shape_b = self.relu1b.forward(abstract_shape_b)

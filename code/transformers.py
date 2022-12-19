@@ -226,7 +226,7 @@ class AbstractConvolution:
         if bias is None:
             self.bias: Tensor = Tensor([0] * self.c_out)  # [c_out]
         else:
-            assert self.bias.dim() == 1
+            assert bias.dim() == 1
             self.bias = bias  # [c_out]
         self.N = None
 
