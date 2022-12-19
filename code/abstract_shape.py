@@ -1,6 +1,6 @@
 from __future__ import annotations
 from tokenize import Double
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 import torch
 import torch.nn as nn
 from torch import Tensor
@@ -94,12 +94,9 @@ class LinearAbstractShape(AbstractShape):
 
     def backsub_flatten(self, flatten_ashape):
         N, N12C1 = self.y_greater.shape[0], self.y_greater.shape[1]
-        # TODO: fix this: lower an upper are none, can they just be set to None in the new shape?
         return ConvAbstractShape(
             self.y_greater.reshape(N, 1, 1, N12C1),
             self.y_less.reshape(N, 1, 1, N12C1),
-            # self.lower.reshape(N, 1, 1),
-            # self.upper.reshape(N, 1, 1),
             None,
             None,
             c_in=flatten_ashape.original_shape[0],
@@ -417,9 +414,8 @@ class ConvAbstractShape(AbstractShape):
             (bias.unsqueeze(-1), composed_kernel), -1
         )  # <C, N, N, C2 * H_out * W_out + 1>
 
-        # TODO: wrong, fix
-        S2 = S * S1  # should be right
-        P2 = P1 + S1 * P  # wrong ?
+        S2 = S * S1
+        P2 = P1 + S1 * P
 
         return ConvAbstractShape(
             composed_kernel_with_b_greater,
@@ -461,14 +457,49 @@ class ResidualAbstractShape(AbstractInputShape):
         bn1a: ConvAbstractShape,
         conv1b: ConvAbstractShape,
         bn1b: ConvAbstractShape,
-        relu1b: ReluAbstractShape,
+        relu1b: ConvAbstractShape,
         conv2b: ConvAbstractShape,
         bn2b: ConvAbstractShape,
     ) -> None:
         super().__init__(y_greater, y_less, lower, upper)
-        # TODO
+        # Path a
+        if conv1a is None:
+            self.conv1_bn_a = None
+        elif bn1a is None:
+            self.conv1_bn_a = conv1a
+        else:
+            self.conv1_bn_a = bn1a
 
-    def backsub(self, previous_abstract_shape):
+        # Path b
+        if bn1b is None:
+            self.conv1_bn_b = conv1b
+            self.conv2_bn_b = conv2b
+        else:
+            self.conv1_bn_b = bn1b
+            self.conv2_bn_b = bn2b
+        self.relu1b = relu1b
+
+    def backsub(self, previous_abstract_shape: ReluAbstractShape) -> ConvAbstractShape:
+        temp_convAS = self.internal_backsub(previous_abstract_shape)
+        abstract_shape = temp_convAS.backsub(previous_abstract_shape)
+        return abstract_shape
+
+    def internal_backsub(self, previous_abstract_shape) -> ConvAbstractShape:
+        if self.conv1_bn_a is None:
+            backsub_path_a = self.get_id_conv()
+        else:
+            backsub_path_a = self.conv1_bn_a
+        backsub_path_b = self.conv2_bn_b.backsub(self.relu1b)
+        backsub_path_b = backsub_path_b.backsub(self.conv1_bn_b)
+        merged_abstract_shape = self.merge(backsub_path_a, backsub_path_b)
+        return merged_abstract_shape
+
+    def merge(
+        self, a: Optional[ConvAbstractShape], b: ConvAbstractShape
+    ) -> ConvAbstractShape:
+        pass
+
+    def get_id_conv() -> ConvAbstractShape:
         pass
 
 

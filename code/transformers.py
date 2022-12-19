@@ -150,6 +150,7 @@ class AbstractReLU:
         ones = torch.ones_like(u_i)
         zeros = torch.zeros_like(u_i)
         if self.alphas is None:
+            # TODO: consider different initialisation
             if self.alpha_init == "rand":
                 self.alphas = torch.rand_like(
                     u_i, requires_grad=True
@@ -189,6 +190,7 @@ class AbstractReLU:
 
     def _clip_alphas(self):
         for v in self.alphas.values():
+            # TODO: consider replacing with a sigmoid
             v.data = torch.clamp(v.data, 0.0, 1.0)
 
 
