@@ -155,7 +155,8 @@ class AbstractReLU:
         if self.alphas is None:
             # TODO: consider different initialisation
             if self.alpha_init == "rand":
-                self.real_alphas = torch.randn_like(u_i, requires_grad=True)
+                # self.real_alphas = torch.randn_like(u_i, requires_grad=True)
+                self.real_alphas = torch.normal(0, 0.2, u_i.shape, requires_grad=True)
                 self.alphas = self.real_alphas.sigmoid()
                 # torch.rand_like(
                 #     u_i, requires_grad=True

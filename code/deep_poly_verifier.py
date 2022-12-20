@@ -57,7 +57,7 @@ def get_checker_class_from_name(net_name) -> ANetChecker:
         "net5": InclusionANetChecker,
         "net6": InclusionANetChecker,
         "net7": InclusionANetChecker,
-        "net8": InclusionANetChecker,
+        "net8": DummyANetChecker,
         "net9": InclusionANetChecker,
         "net10": InclusionANetChecker,
     }
@@ -98,7 +98,7 @@ class DeepPolyVerifier:
                 final_abstract_shape = self.abstract_net.forward(
                     abstract_input, true_label, self.N
                 )
-                # print(f"Max violation:\t {final_abstract_shape.lower.min()}\n")
+                print(f"Max violation:\t {final_abstract_shape.lower.min()}\n")
                 if verifyFinalShape(final_abstract_shape):
                     return True
 
@@ -110,7 +110,7 @@ class DeepPolyVerifier:
 
                 alphas = self.abstract_net.get_alphas()
                 optim = torch.optim.AdamW(
-                    alphas, lr=self.LR#, weight_decay=self.WEIGHT_DECAY
+                    alphas, lr=self.LR  # , weight_decay=self.WEIGHT_DECAY
                 )
                 optim.zero_grad()
                 loss = weightedLoss(final_abstract_shape.lower, self.gamma)
@@ -120,7 +120,7 @@ class DeepPolyVerifier:
                 #     a.clamp(0, 1).detach().requires_grad_() for a in alphas
                 # ]
                 # self.abstract_net.set_alphas(alphas_clamped)
-            
+
             alphas = self.abstract_net.get_alphas()
             new_alphas = [torch.rand_like(a) for a in alphas]
             self.abstract_net.set_alphas(new_alphas)
