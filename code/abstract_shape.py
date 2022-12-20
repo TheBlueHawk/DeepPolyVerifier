@@ -506,7 +506,7 @@ class ResidualAbstractShape(AbstractInputShape):
             upper=None,
             c_in=b.c_in,
             n_in=b.n_in,
-            k=b.n_in,
+            k=b.k,
             padding=b.padding,
             stride=b.stride,
         )
