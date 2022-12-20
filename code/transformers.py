@@ -114,6 +114,7 @@ class AbstractNormalize:
 
 class AbstractReLU:
     def __init__(self, alpha_init="rand") -> None:
+        self.real_alphas = None
         self.alphas: Tensor = None  # Updated during forward pass
         self.alpha_init = alpha_init
 
@@ -144,6 +145,8 @@ class AbstractReLU:
         a_greater_j = [n, 1] (list of alphas, now all alphas = 0)
         a_less_j = [n, 2] (list of linear coeff, [b,a]: b + ax)
         """
+        if self.real_alphas is not None:
+            self.alphas = self.real_alphas.sigmoid()
 
         zero_ones = torch.stack((torch.zeros_like(u_i), torch.ones_like(u_i)), dim=0)
         zero_zeros = torch.zeros_like(zero_ones)
@@ -152,9 +155,11 @@ class AbstractReLU:
         if self.alphas is None:
             # TODO: consider different initialisation
             if self.alpha_init == "rand":
-                self.alphas = torch.rand_like(
-                    u_i, requires_grad=True
-                )  # .requires_grad_()
+                self.real_alphas = torch.randn_like(u_i, requires_grad=True)
+                self.alphas = self.real_alphas.sigmoid()
+                # torch.rand_like(
+                #     u_i, requires_grad=True
+                # )  # .requires_grad_()
             elif self.alpha_init == "zeros":
                 self.alphas = torch.zeros_like(u_i, requires_grad=True)
             else:

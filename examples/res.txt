@@ -12,8 +12,9 @@ net_6,img1_0.0140.txt,verified
 net_6,img2_0.0147.txt,not verified
 net_7,img1_0.0540.txt,verified
 net_7,img2_0.1440.txt,not verified
-net_8,img1_0.0096.txt,not verified
-net_8,img2_0.0100.txt,not verified
+net_8,img1_0.0096.txt,
+net_8,img2_0.0100.txt,
 net_9,img1_0.0040.txt,
 net_9,img2_0.0040.txt,verified
-net_10,img1_0.0014.txt,verified
+net_10,img1_0.0014.txt,
+net_10,img2_0.0015.txt,

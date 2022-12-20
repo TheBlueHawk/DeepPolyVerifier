@@ -57,9 +57,9 @@ def get_checker_class_from_name(net_name) -> ANetChecker:
         "net5": InclusionANetChecker,
         "net6": InclusionANetChecker,
         "net7": InclusionANetChecker,
-        "net8": InclusionANetChecker,
-        "net9": InclusionANetChecker,
-        "net10": InclusionANetChecker,
+        "net8": DummyANetChecker,
+        "net9": DummyANetChecker,
+        "net10": DummyANetChecker,
     }
     return checkers[net_name]
 
@@ -74,8 +74,8 @@ class DeepPolyVerifier:
         self.N = 10
         self.gamma = 4
         self.ALPHA_EPOCHS = 1
-        self.ALPHA_ITERS = 3
-        self.LR = 0.1
+        self.ALPHA_ITERS = 20
+        self.LR = 1
         self.WEIGHT_DECAY = 0.1
 
     def verify(self, inputs, eps, true_label) -> bool:
@@ -93,12 +93,12 @@ class DeepPolyVerifier:
         for _ in range(self.ALPHA_EPOCHS):
             for _ in range(self.ALPHA_ITERS):
                 if time.time() - start_time > 60:
-                    return not False
+                    return False
 
                 final_abstract_shape = self.abstract_net.forward(
                     abstract_input, true_label, self.N
                 )
-                print(f"Max violation:\t {final_abstract_shape.lower.min()}")
+                # print(f"Max violation:\t {final_abstract_shape.lower.min()}\n")
                 if verifyFinalShape(final_abstract_shape):
                     return True
 
@@ -110,16 +110,16 @@ class DeepPolyVerifier:
 
                 alphas = self.abstract_net.get_alphas()
                 optim = torch.optim.AdamW(
-                    alphas, lr=self.LR, weight_decay=self.WEIGHT_DECAY
+                    alphas, lr=self.LR#, weight_decay=self.WEIGHT_DECAY
                 )
                 optim.zero_grad()
                 loss = weightedLoss(final_abstract_shape.lower, self.gamma)
                 loss.backward()
                 optim.step()
-                alphas_clamped = [
-                    a.clamp(0, 1).detach().requires_grad_() for a in alphas
-                ]
-                self.abstract_net.set_alphas(alphas_clamped)
+                # alphas_clamped = [
+                #     a.clamp(0, 1).detach().requires_grad_() for a in alphas
+                # ]
+                # self.abstract_net.set_alphas(alphas_clamped)
             
             alphas = self.abstract_net.get_alphas()
             new_alphas = [torch.rand_like(a) for a in alphas]
