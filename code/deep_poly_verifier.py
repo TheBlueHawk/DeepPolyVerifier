@@ -57,9 +57,9 @@ def get_checker_class_from_name(net_name) -> ANetChecker:
         "net5": InclusionANetChecker,
         "net6": InclusionANetChecker,
         "net7": InclusionANetChecker,
-        "net8": DummyANetChecker,
-        "net9": DummyANetChecker,
-        "net10": DummyANetChecker,
+        "net8": InclusionANetChecker,
+        "net9": InclusionANetChecker,
+        "net10": InclusionANetChecker,
     }
     return checkers[net_name]
 

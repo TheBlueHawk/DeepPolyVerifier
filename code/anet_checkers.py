@@ -65,7 +65,7 @@ class InclusionANetChecker(ANetChecker):
             pts = 5
             torch.set_printoptions(precision=10)
             print(
-                "intervals:",
+                "upper-lower:",
                 (
                     abstract_shape.upper[bad_idx_l][:pts]
                     - abstract_shape.lower[bad_idx_l][:pts]
@@ -74,14 +74,14 @@ class InclusionANetChecker(ANetChecker):
             )
             print(
                 "bad lower x < l",
-                x[bad_idx_l][:pts],
-                abstract_shape.lower[bad_idx_l][:pts],
+                "x", x[bad_idx_l][:pts],
+                "l",abstract_shape.lower[bad_idx_l][:pts],
                 sep="\n",
             )
             print(
                 "bad upper x > u",
-                x[bad_idx_u][:pts],
-                abstract_shape.upper[bad_idx_u][:pts],
+                "x", x[bad_idx_u][:pts],
+                "u", abstract_shape.upper[bad_idx_u][:pts],
                 sep="\n",
             )
             torch.set_printoptions()
