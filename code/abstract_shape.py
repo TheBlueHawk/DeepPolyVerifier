@@ -471,29 +471,17 @@ class ResidualAbstractShape(AbstractInputShape):
         y_less: Tensor,
         lower: Tensor,
         upper: Tensor,
-        conv1a: ConvAbstractShape,
-        bn1a: ConvAbstractShape,
-        conv1b: ConvAbstractShape,
-        bn1b: ConvAbstractShape,
-        relu1b: ConvAbstractShape,
-        conv2b: ConvAbstractShape,
-        bn2b: ConvAbstractShape,
+        conv1_bn_a: ConvAbstractShape,
+        conv1_bn_b: ConvAbstractShape,
+        relu1b: ReluAbstractShape,
+        conv2_bn_b: ConvAbstractShape,
     ) -> None:
         super().__init__(y_greater, y_less, lower, upper)
         # Path a
-        if bn1a is None:
-            self.conv1_bn_a = conv1a
-        else:
-            self.conv1_bn_a = bn1a
-
-        # Path b
-        if bn1b is None:
-            self.conv1_bn_b = conv1b
-            self.conv2_bn_b = conv2b
-        else:
-            self.conv1_bn_b = bn1b
-            self.conv2_bn_b = bn2b
+        self.conv1_bn_a = conv1_bn_a
+        self.conv1_bn_b = conv1_bn_b
         self.relu1b = relu1b
+        self.conv2_bn_b = conv2_bn_b
 
     def backsub(self, previous_abstract_shape: ReluAbstractShape) -> ConvAbstractShape:
         temp_convAS = self.internal_backsub(previous_abstract_shape)
@@ -533,8 +521,9 @@ class ResidualAbstractShape(AbstractInputShape):
         weights_b = ineq_b[..., 1:]
 
         weights_a = weights_a.reshape(*weights_a.shape[:-1], c_in, ka, ka)
-        pad = (kb - ka) / 2
-        weights_a_expanded = F.pad(weights_a, (pad, pad, pad, pad))
+        pad = (int)((kb - ka) / 2)
+        padding = (pad, pad, pad, pad)
+        weights_a_expanded = F.pad(weights_a, padding, "constant", 0)
         weights_a_expanded = weights_a_expanded.flatten(start_dim=3, end_dim=5)
         weights_comb = weights_a_expanded + weights_b
 

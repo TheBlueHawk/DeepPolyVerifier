@@ -1036,8 +1036,8 @@ class AbstractBlockSubnet(AbstractNetwork):
     def forward(
         self, abstract_shape: ReluAbstractShape, previous_shapes: List[AbstractShape]
     ) -> ResidualAbstractShape:
-        prev_abstract_shapes_a = previous_shapes.copy()
-        prev_abstract_shapes_b = previous_shapes.copy()
+        prev_abstract_shapes_a = []
+        prev_abstract_shapes_b = []
         abstract_shape_a = abstract_shape
         abstract_shape_b = abstract_shape
         self.checker.check_next(abstract_shape)
@@ -1056,7 +1056,7 @@ class AbstractBlockSubnet(AbstractNetwork):
         # Path B
         # conv1b
         abstract_shape_b = self.conv1b.forward(abstract_shape_b)
-        abstract_shape_b = self.backsub(abstract_shape_b, prev_abstract_shapes_b)
+        abstract_shape_b = self.backsub(abstract_shape_b, previous_shapes)
         self.checker.check_next(abstract_shape_b)
         if self.bn:
             abstract_shape_b = self.bn1b.forward(abstract_shape_b)
@@ -1082,17 +1082,7 @@ class AbstractBlockSubnet(AbstractNetwork):
         lower = abstract_shape_a.lower + abstract_shape_b.lower
         upper = abstract_shape_a.upper + abstract_shape_b.upper
         abstract_shape = ResidualAbstractShape(
-            None,
-            None,
-            lower,
-            upper,
-            self.conv1a,
-            self.bn1a,
-            self.conv1b,
-            self.bn1b,
-            self.relu1b,
-            self.conv2b,
-            self.bn2b,
+            None, None, lower, upper, *prev_abstract_shapes_a, *prev_abstract_shapes_b
         )
         self.checker.check_next(abstract_shape)
         return abstract_shape
@@ -1100,3 +1090,6 @@ class AbstractBlockSubnet(AbstractNetwork):
     def create_abstract_id_conv(self, c_out: int, c_in: int) -> AbstractConvolution:
         kernel = torch.ones(c_out, c_in, 1, 1)
         return AbstractConvolution(kernel, None, 1, 0)
+
+
+# TODO construct ResidualAbstractShape with prev_abstract_shapes_a and prev_abstract_shapes_b
