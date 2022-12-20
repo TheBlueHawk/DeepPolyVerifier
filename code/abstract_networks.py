@@ -582,6 +582,7 @@ class AbstractNet7(AbstractNetwork):
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.conv2.forward(abstract_shape)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
         self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
@@ -681,7 +682,7 @@ class AbstractNet8(AbstractNetwork):
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.block1.forward(abstract_shape, prev_abstract_shapes)
-        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+        # abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
         self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
@@ -690,7 +691,7 @@ class AbstractNet8(AbstractNetwork):
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.block2.forward(abstract_shape, prev_abstract_shapes)
-        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+        # abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
         self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
@@ -1068,7 +1069,7 @@ class AbstractBlockSubnet(AbstractNetwork):
         abstract_shape_b = self.conv1b.forward(abstract_shape_b)
         self.checker_b.check_next(abstract_shape_b)
         self.checker=self.checker_b
-        abstract_shape_b = self.backsub(abstract_shape_b, previous_shapes, check=True)
+        # abstract_shape_b = self.backsub(abstract_shape_b, previous_shapes, check=True)
         self.checker_b.recheck(abstract_shape_b)
         # self.checker.check_next(abstract_shape_b)
         if self.bn:

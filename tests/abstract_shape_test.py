@@ -676,7 +676,7 @@ def test_aconv_backsub_relu():
         torch.tensor([
             [0, 0],
             [2, 3]
-        ]), 
+        ]),
         torch.tensor([
             [4, 0],
             [-1, -2]
@@ -685,8 +685,8 @@ def test_aconv_backsub_relu():
     )
 
     prev_conv_shape = ConvAbstractShape(
-        torch.empty(2, 2, 2, 1),
-        torch.empty(2, 2, 2, 1),
+        torch.empty(2, 2, 2, 9),
+        torch.empty(2, 2, 2, 9),
         torch.tensor([
             [[-2., 1],
              [0, -2]],
@@ -704,15 +704,15 @@ def test_aconv_backsub_relu():
         c_in=2, n_in=2, k=2, padding=1, stride=2
     )
     
-    print("prev_conv_shape", prev_conv_shape, sep='\n', end='\n\n')
+    # print("prev_conv_shape", prev_conv_shape, sep='\n', end='\n\n')
     arelu_trans = AbstractReLU('zeros')
     relu_ashape = arelu_trans.forward(prev_conv_shape)
-    print("relu_ashape", relu_ashape, sep='\n', end='\n\n')
-    print("curr_conv_shape", curr_conv_shape, sep='\n', end='\n\n')
+    # print("relu_ashape", relu_ashape, sep='\n', end='\n\n')
+    # print("curr_conv_shape", curr_conv_shape, sep='\n', end='\n\n')
     new_ashape = curr_conv_shape.backsub(relu_ashape)
-    print("new_ashape", new_ashape, sep='\n', end='\n\n')
+    # print("new_ashape", new_ashape, sep='\n', end='\n\n')
     recompute_bounds(prev_conv_shape, new_ashape, curr_conv_shape)
-    print("curr_conv_shape", curr_conv_shape, sep='\n', end='\n\n')
+    # print("curr_conv_shape", curr_conv_shape, sep='\n', end='\n\n')
 
     assert torch.allclose(curr_conv_shape.lower, Tensor([
         [0, 0],
@@ -772,8 +772,8 @@ def test_recompute_bounds_conv():
     ]))
 
 def main():
-    for i in range(100):
-        test_aconv_backsub_relu_conv_concrete_stays_inside()
+    for i in range(1):
+        test_aconv_backsub_relu()
         print(i)
 
 if __name__ == "__main__":
