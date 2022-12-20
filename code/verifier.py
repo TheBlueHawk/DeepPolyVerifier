@@ -60,6 +60,7 @@ def analyze(net, net_name, inputs, eps, true_label):
             verifier = DeepPolyVerifier(net, net_name)
             inputs = torch.rand_like(inputs)
             eps = random() / 4
+            # eps = 1
             try:
                 print(verifier.verify(inputs, eps, true_label))
             except:
