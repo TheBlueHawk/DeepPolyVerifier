@@ -16,7 +16,12 @@ from abstract_networks import (
     AbstractNet9,
     AbstractNetwork,
 )
-from anet_checkers import ANetChecker, DummyANetChecker, InclusionANetChecker, ResnetChecker
+from anet_checkers import (
+    ANetChecker,
+    DummyANetChecker,
+    InclusionANetChecker,
+    ResnetChecker,
+)
 
 
 def get_anet_class_from_name(net_name) -> AbstractNetwork:
@@ -55,11 +60,11 @@ def get_checker_class_from_name(net_name) -> ANetChecker:
         "net3": InclusionANetChecker,
         "net4": InclusionANetChecker,
         "net5": InclusionANetChecker,
-        "net6": InclusionANetChecker,
+        "net6": DummyANetChecker,
         "net7": InclusionANetChecker,
-        "net8": InclusionANetChecker,
+        "net8": ResnetChecker,
         "net9": ResnetChecker,
-        "net10": InclusionANetChecker,
+        "net10": ResnetChecker,
     }
     return checkers[net_name]
 
@@ -72,9 +77,9 @@ class DeepPolyVerifier:
         abstract_net_class = get_anet_class_from_name(net_name)
         self.abstract_net = abstract_net_class(net, self.checker)
         self.N = 10
-        self.gamma = 4
+        self.gamma = 5
         self.ALPHA_EPOCHS = 2
-        self.ALPHA_ITERS = 15
+        self.ALPHA_ITERS = 1
         self.LR = 1
         self.WEIGHT_DECAY = 0
 
