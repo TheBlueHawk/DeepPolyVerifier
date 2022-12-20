@@ -364,9 +364,8 @@ class AbstractBatchNorm:
         if isinstance(args[0], nn.BatchNorm2d):
             self._init_from_layer(*args)
 
-        elif isinstance(args[0], torch.Tensor):
-            raise NotImplementedError
-            # self._init_from_tensor(*args)
+        elif isinstance(args[0], int):
+            self._init_from_values(*args)
         else:
             raise Exception(
                 "Invalid arguments passed to the initializer of AbstractLinear"
@@ -380,8 +379,21 @@ class AbstractBatchNorm:
         self.beta = layer.bias  # <C>
         self.eps = layer.eps
 
-    def _init_from_values(*args):
-        pass
+    def _init_from_values(
+        self,
+        num_features: int,
+        running_mean: Tensor,
+        running_var: Tensor,
+        gamma: Tensor,
+        beta: Tensor,
+        eps=1e-05,
+    ):
+        self.num_features = num_features  # C
+        self.running_mean = running_mean  # <C>
+        self.running_var = running_var  # <C>
+        self.gamma = gamma  # <C>
+        self.beta = beta  # <C>
+        self.eps = eps
 
     def normalize(self, x: Tensor) -> Tensor:
         x_shape = x.shape
@@ -401,7 +413,7 @@ class AbstractBatchNorm:
             x_shape[0], x_shape[1], x_shape[2], x_shape[3]
         )
 
-        return ((x - running_mean) / (running_var + self.eps)) * gamma + beta
+        return ((x - running_mean) / torch.sqrt(running_var + self.eps)) * gamma + beta
 
     def forward(self, x: ConvAbstractShape) -> ConvAbstractShape:
         assert x.lower.shape[0] == self.running_mean.shape[0]
