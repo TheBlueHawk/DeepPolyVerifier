@@ -401,7 +401,7 @@ class AbstractBatchNorm:
             x_shape[0], x_shape[1], x_shape[2], x_shape[3]
         )
 
-        return ((x - running_mean) / (running_var + self.eps)) * gamma + beta
+        return ((x - running_mean) / torch.sqrt(running_var + self.eps)) * gamma + beta
 
     def forward(self, x: ConvAbstractShape) -> ConvAbstractShape:
         assert x.lower.shape[0] == self.running_mean.shape[0]
