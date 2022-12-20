@@ -1032,7 +1032,7 @@ class AbstractBlockSubnet(AbstractNetwork):
             if self.bn:
                 self.bn1a = AbstractBatchNorm(self.path_a[2])
 
-        self.checker = checker
+        self.main_checker = checker
         self.checker_a = checker.next_path_a_checker()
         self.checker_b = checker.next_path_b_checker()
         
@@ -1040,8 +1040,8 @@ class AbstractBlockSubnet(AbstractNetwork):
     def forward(
         self, abstract_shape: ReluAbstractShape, previous_shapes: List[AbstractShape]
     ) -> ResidualAbstractShape:
-        self.checker_a.reset(self.checker.x)
-        self.checker_b.reset(self.checker.x)
+        self.checker_a.reset(self.main_checker.x)
+        self.checker_b.reset(self.main_checker.x)
         prev_abstract_shapes_a = []
         prev_abstract_shapes_b = []
         abstract_shape_a = abstract_shape
@@ -1067,7 +1067,8 @@ class AbstractBlockSubnet(AbstractNetwork):
         # conv1b
         abstract_shape_b = self.conv1b.forward(abstract_shape_b)
         self.checker_b.check_next(abstract_shape_b)
-        abstract_shape_b = self.backsub(abstract_shape_b, previous_shapes)
+        self.checker=self.checker_b
+        abstract_shape_b = self.backsub(abstract_shape_b, previous_shapes, check=True)
         self.checker_b.recheck(abstract_shape_b)
         # self.checker.check_next(abstract_shape_b)
         if self.bn:
