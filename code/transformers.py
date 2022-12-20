@@ -396,7 +396,7 @@ class AbstractBatchNorm:
         self.beta = beta  # <C>
         self.eps = eps
 
-    def normalize(self, x: Tensor) -> Tensor:
+    def normalize_lu(self, x: Tensor) -> Tensor:
         x_shape = x.shape
         running_mean = (
             self.running_mean.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
@@ -416,14 +416,59 @@ class AbstractBatchNorm:
 
         return ((x - running_mean) / torch.sqrt(running_var + self.eps)) * gamma + beta
 
+    def normalize_ineq(self, x: Tensor) -> Tensor:
+        x_shape = x.shape[0], x.shape[1] , x.shape[2], x.shape[3] - 1
+        running_mean_w = (
+            self.running_mean.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
+        ).expand(x_shape[0], x_shape[1], x_shape[2], x_shape[3])
+
+        running_var_w = (
+            self.running_var.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
+        ).expand(x_shape[0], x_shape[1], x_shape[2], x_shape[3])
+
+        gamma_w = (self.gamma.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)).expand(
+            x_shape[0], x_shape[1], x_shape[2], x_shape[3]
+        )
+
+        beta_w = (self.beta.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)).expand(
+            x_shape[0], x_shape[1], x_shape[2], x_shape[3]
+        )
+
+        p_w = gamma_w / torch.sqrt(running_var_w + self.eps)
+
+        running_mean_b = (
+            self.running_mean.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
+        ).expand(x_shape[0], x_shape[1], x_shape[2], 1)
+
+        running_var_b = (
+            self.running_var.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
+        ).expand(x_shape[0], x_shape[1], x_shape[2], 1)
+
+        gamma_b = (self.gamma.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)).expand(
+            x_shape[0], x_shape[1], x_shape[2], 1
+        )
+
+        beta_b = (self.beta.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)).expand(
+            x_shape[0], x_shape[1], x_shape[2], 1
+        )
+
+        p_b = gamma_b / torch.sqrt(running_var_b + self.eps)
+        q_b = beta_b - (gamma_b * running_mean_b) / torch.sqrt(running_var_b + self.eps)
+
+        bias = x[..., 0:1]
+        new_bias = p_b * bias + q_b
+        weights = x[..., 1:]
+        new_weights = p_w * weights
+        return torch.cat([new_bias, new_weights], axis=3)
+
     def forward(self, x: ConvAbstractShape) -> ConvAbstractShape:
         assert x.lower.shape[0] == self.running_mean.shape[0]
         assert x.upper.shape[0] == self.running_mean.shape[0]
 
-        lower = self.normalize(x.lower.unsqueeze(-1)).squeeze(-1)
-        upper = self.normalize(x.upper.unsqueeze(-1)).squeeze(-1)
-        y_greater = self.normalize(x.y_greater)
-        y_less = self.normalize(x.y_less)
+        lower = self.normalize_lu(x.lower.unsqueeze(-1)).squeeze(-1)
+        upper = self.normalize_lu(x.upper.unsqueeze(-1)).squeeze(-1)
+        y_greater = self.normalize_ineq(x.y_greater)
+        y_less = self.normalize_ineq(x.y_less)
         return ConvAbstractShape(
             y_greater, y_less, lower, upper, x.c_in, x.n_in, x.k, x.padding, x.stride
         )
