@@ -484,7 +484,7 @@ class ResidualAbstractShape(AbstractInputShape):
         self.conv2_bn_b = conv2_bn_b
 
     def backsub(self, previous_abstract_shape: ReluAbstractShape) -> ConvAbstractShape:
-        temp_convAS = self.internal_backsub(previous_abstract_shape)
+        temp_convAS = self.internal_backsub()
         abstract_shape = temp_convAS.backsub(previous_abstract_shape)
         return abstract_shape
 

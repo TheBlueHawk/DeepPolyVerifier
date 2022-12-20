@@ -681,7 +681,7 @@ class AbstractNet8(AbstractNetwork):
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.block1.forward(abstract_shape, prev_abstract_shapes)
-        # abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
         self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
@@ -690,7 +690,7 @@ class AbstractNet8(AbstractNetwork):
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.block2.forward(abstract_shape, prev_abstract_shapes)
-        # abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
         self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
@@ -703,7 +703,7 @@ class AbstractNet8(AbstractNetwork):
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.lin1.forward(abstract_shape)
-        # abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
         self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
@@ -716,7 +716,7 @@ class AbstractNet8(AbstractNetwork):
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.final_atransformer.forward(abstract_shape)
-        # abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
 
         return abstract_shape
 
@@ -795,7 +795,7 @@ class AbstractNet9(AbstractNetwork):
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.block1.forward(abstract_shape, prev_abstract_shapes)
-        # abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
         self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
@@ -804,7 +804,7 @@ class AbstractNet9(AbstractNetwork):
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.block2.forward(abstract_shape, prev_abstract_shapes)
-        # abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
         self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
@@ -817,7 +817,7 @@ class AbstractNet9(AbstractNetwork):
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.lin1.forward(abstract_shape)
-        # abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
         self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
@@ -830,7 +830,7 @@ class AbstractNet9(AbstractNetwork):
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.final_atransformer.forward(abstract_shape)
-        # abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
 
         return abstract_shape
 
@@ -907,7 +907,7 @@ class AbstractNet10(AbstractNetwork):
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.block1.forward(abstract_shape, prev_abstract_shapes)
-        # abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
         self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
@@ -916,7 +916,7 @@ class AbstractNet10(AbstractNetwork):
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.block2.forward(abstract_shape, prev_abstract_shapes)
-        # abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
         self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
@@ -925,7 +925,7 @@ class AbstractNet10(AbstractNetwork):
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.block3.forward(abstract_shape, prev_abstract_shapes)
-        # abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
         self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
@@ -934,7 +934,7 @@ class AbstractNet10(AbstractNetwork):
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.block4.forward(abstract_shape, prev_abstract_shapes)
-        # abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
         self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
@@ -947,7 +947,7 @@ class AbstractNet10(AbstractNetwork):
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.lin1.forward(abstract_shape)
-        # abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
         self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
@@ -960,7 +960,7 @@ class AbstractNet10(AbstractNetwork):
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.final_atransformer.forward(abstract_shape)
-        # abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
 
         return abstract_shape
 
@@ -1090,6 +1090,3 @@ class AbstractBlockSubnet(AbstractNetwork):
     def create_abstract_id_conv(self, c_out: int, c_in: int) -> AbstractConvolution:
         kernel = torch.ones(c_out, c_in, 1, 1)
         return AbstractConvolution(kernel, None, 1, 0)
-
-
-# TODO construct ResidualAbstractShape with prev_abstract_shapes_a and prev_abstract_shapes_b

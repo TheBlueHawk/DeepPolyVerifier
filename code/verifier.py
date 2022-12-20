@@ -12,6 +12,7 @@ DTYPE = torch.float32
 x = 5
 DEBUG = False
 
+
 def transform_image(pixel_values, input_dim):
     normalized_pixel_values = torch.tensor([float(p) / 255.0 for p in pixel_values])
     if len(input_dim) > 1:
@@ -57,8 +58,8 @@ def analyze(net, net_name, inputs, eps, true_label):
     verifier = DeepPolyVerifier(net, net_name)
     if DEBUG:
         for _ in range(10):
-            inputs =  0.5*torch.ones_like(inputs)# torch.rand_like(inputs)
-            eps = 0.4# random() / 4
+            inputs = 0.5 * torch.ones_like(inputs)  # torch.rand_like(inputs)
+            eps = 0.4  # random() / 4
             try:
                 print(verifier.verify(inputs, eps, true_label))
             except:

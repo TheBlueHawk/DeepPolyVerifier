@@ -74,7 +74,7 @@ class DeepPolyVerifier:
         self.gamma = 4
         self.ALPHA_EPOCHS = 4
         self.ALPHA_ITERS = 50
-        self.LR = 1e-1
+        self.LR = 0.1
 
     def verify(self, inputs, eps, true_label) -> bool:
         """
