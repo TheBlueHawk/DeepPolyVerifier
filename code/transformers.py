@@ -188,11 +188,6 @@ class AbstractReLU:
 
         return ReluAbstractShape(a_greater_j, a_less_j, l_j, u_j)
 
-    def _clip_alphas(self):
-        for v in self.alphas.values():
-            # TODO: consider replacing with a sigmoid
-            v.data = torch.clamp(v.data, 0.0, 1.0)
-
 
 class AbstractConvolution:
     def __init__(self, *args) -> None:

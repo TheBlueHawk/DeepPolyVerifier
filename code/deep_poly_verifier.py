@@ -76,6 +76,7 @@ class DeepPolyVerifier:
         self.ALPHA_EPOCHS = 1
         self.ALPHA_ITERS = 3
         self.LR = 0.1
+        self.WEIGHT_DECAY = 0.1
 
     def verify(self, inputs, eps, true_label) -> bool:
         """
@@ -97,7 +98,7 @@ class DeepPolyVerifier:
                 final_abstract_shape = self.abstract_net.forward(
                     abstract_input, true_label, self.N
                 )
-                # print(f"Max violation:\t {final_abstract_shape.lower.min()}")
+                print(f"Max violation:\t {final_abstract_shape.lower.min()}")
                 if verifyFinalShape(final_abstract_shape):
                     return True
 
@@ -108,7 +109,9 @@ class DeepPolyVerifier:
                 # from input neurons to bounds
 
                 alphas = self.abstract_net.get_alphas()
-                optim = torch.optim.Adam(alphas, lr=self.LR)
+                optim = torch.optim.AdamW(
+                    alphas, lr=self.LR, weight_decay=self.WEIGHT_DECAY
+                )
                 optim.zero_grad()
                 loss = weightedLoss(final_abstract_shape.lower, self.gamma)
                 loss.backward()
