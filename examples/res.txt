@@ -6,10 +6,15 @@ net_3,img1_0.0065.txt,not verified
 net_3,img2_0.0081.txt,verified
 net_4,img1_0.2240.txt,verified
 net_4,img2_0.2290.txt,not verified
-net_5,img1_0.0260.txt,intervals: tensor([0.6829547882, 0.6843717098, 0.6843717098, 0.6843717098, 0.6843717098]) bad lower x < l tensor([0.5984549522, 0.5913336277, 0.5913336277, 0.5913336277, 0.5913336277], grad_fn=<SliceBackward0>) tensor([0.5984554291, 0.5913338661, 0.5913338661, 0.5913338661, 0.5913338661]) bad upper x > u tensor([], grad_fn=<SliceBackward0>) tensor([])
-net_5,img2_0.0470.txt,intervals: tensor([1.2345724106, 1.2371332645, 1.2371332645, 1.2371332645, 1.2371332645]) bad lower x < l tensor([0.5984549522, 0.5913336277, 0.5913336277, 0.5913336277, 0.5913336277], grad_fn=<SliceBackward0>) tensor([0.5984554291, 0.5913338661, 0.5913338661, 0.5913338661, 0.5913338661]) bad upper x > u tensor([], grad_fn=<SliceBackward0>) tensor([])
+net_5,img1_0.0260.txt,verified
+net_5,img2_0.0470.txt,verified
 net_6,img1_0.0140.txt,verified
 net_6,img2_0.0147.txt,not verified
 net_7,img1_0.0540.txt,verified
 net_7,img2_0.1440.txt,not verified
-net_8,img1_0.0096.txt,not verified
+net_8,img1_0.0096.txt,
+net_8,img2_0.0100.txt,
+net_9,img1_0.0040.txt,
+net_9,img2_0.0040.txt,
+net_10,img1_0.0014.txt,
+net_10,img2_0.0015.txt,

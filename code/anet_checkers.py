@@ -1,9 +1,13 @@
 import torch
-
+from networks import NormalizedResnet
 
 class ANetChecker:
     def __init__(self, net):
-        self.layers = net.layers
+        if isinstance(net, NormalizedResnet):
+            self.layers = [net.normalization] + [l for l in net.resnet]
+        else:
+            self.layers = net.layers
+            
         self.current_layer = -1
 
     def reset(self, x):

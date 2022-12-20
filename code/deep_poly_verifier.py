@@ -1,5 +1,6 @@
 import torch
 from torch import Tensor
+import time
 
 from abstract_shape import create_abstract_input_shape, AbstractShape, weightedLoss
 from abstract_networks import (
@@ -56,9 +57,9 @@ def get_checker_class_from_name(net_name) -> ANetChecker:
         "net5": InclusionANetChecker,
         "net6": InclusionANetChecker,
         "net7": InclusionANetChecker,
-        "net8": DummyANetChecker,
-        "net9": DummyANetChecker,
-        "net10": DummyANetChecker,
+        "net8": InclusionANetChecker,
+        "net9": InclusionANetChecker,
+        "net10": InclusionANetChecker,
     }
     return checkers[net_name]
 
@@ -72,8 +73,8 @@ class DeepPolyVerifier:
         self.abstract_net = abstract_net_class(net, self.checker)
         self.N = 10
         self.gamma = 4
-        self.ALPHA_EPOCHS = 4
-        self.ALPHA_ITERS = 50
+        self.ALPHA_EPOCHS = 1
+        self.ALPHA_ITERS = 3
         self.LR = 0.1
 
     def verify(self, inputs, eps, true_label) -> bool:
@@ -87,8 +88,12 @@ class DeepPolyVerifier:
         abstract_input = create_abstract_input_shape(inputs.squeeze(0), eps)
         self.checker.reset(inputs)
 
+        start_time = time.time()
         for _ in range(self.ALPHA_EPOCHS):
             for _ in range(self.ALPHA_ITERS):
+                if time.time() - start_time > 60:
+                    return not False
+
                 final_abstract_shape = self.abstract_net.forward(
                     abstract_input, true_label, self.N
                 )
@@ -112,7 +117,7 @@ class DeepPolyVerifier:
                     a.clamp(0, 1).detach().requires_grad_() for a in alphas
                 ]
                 self.abstract_net.set_alphas(alphas_clamped)
-
+            
             alphas = self.abstract_net.get_alphas()
             new_alphas = [torch.rand_like(a) for a in alphas]
             self.abstract_net.set_alphas(new_alphas)

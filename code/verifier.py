@@ -55,15 +55,17 @@ def get_net(net, net_name):
 
 
 def analyze(net, net_name, inputs, eps, true_label):
-    verifier = DeepPolyVerifier(net, net_name)
     if DEBUG:
-        for _ in range(10):
-            inputs = 0.5 * torch.ones_like(inputs)  # torch.rand_like(inputs)
-            eps = 0.4  # random() / 4
+        for _ in range(100):
+            verifier = DeepPolyVerifier(net, net_name)
+            inputs = torch.rand_like(inputs)
+            eps = random() / 4
             try:
                 print(verifier.verify(inputs, eps, true_label))
             except:
                 print("Exception")
+
+    verifier = DeepPolyVerifier(net, net_name)
     return verifier.verify(inputs, eps, true_label)
 
 

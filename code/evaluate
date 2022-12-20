@@ -35,7 +35,7 @@ do
 		echo ${spec}
 		res=$(python verifier.py --net net${net} --spec $1/net${net}/${spec})
 		echo net${k}_${net},$spec,$res >> $1/res.txt
-		echo $res ${gt[i]}
+		echo tgt $res 	gt ${gt[i]}
 		let "i++"
 		echo
 	done
