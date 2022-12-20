@@ -1033,10 +1033,15 @@ class AbstractBlockSubnet(AbstractNetwork):
                 self.bn1a = AbstractBatchNorm(self.path_a[2])
 
         self.checker = checker
+        self.checker_a = checker.next_path_a_checker()
+        self.checker_b = checker.next_path_b_checker()
+        
 
     def forward(
         self, abstract_shape: ReluAbstractShape, previous_shapes: List[AbstractShape]
     ) -> ResidualAbstractShape:
+        self.checker_a.reset(self.checker.x)
+        self.checker_b.reset(self.checker.x)
         prev_abstract_shapes_a = []
         prev_abstract_shapes_b = []
         abstract_shape_a = abstract_shape
@@ -1044,36 +1049,46 @@ class AbstractBlockSubnet(AbstractNetwork):
         # self.checker.check_next(abstract_shape)
 
         # Path A
+        self.checker_a.check_next(abstract_shape_a)
         # conv1a
         abstract_shape_a = self.conv1a.forward(abstract_shape_a)
+        self.checker_a.check_next(abstract_shape_a)
         # self.checker.check_next(abstract_shape_a)
         if self.bn:
             abstract_shape_a = self.bn1a.forward(abstract_shape_a)
+            self.checker_a.check_next(abstract_shape_a)
             # self.checker.check_next(abstract_shape_a)
             prev_abstract_shapes_a.append(abstract_shape_a)
         else:
             prev_abstract_shapes_a.append(abstract_shape_a)
 
         # Path B
+        self.checker_b.check_next(abstract_shape_b)
         # conv1b
         abstract_shape_b = self.conv1b.forward(abstract_shape_b)
+        self.checker_b.check_next(abstract_shape_b)
         abstract_shape_b = self.backsub(abstract_shape_b, previous_shapes)
+        self.checker_b.recheck(abstract_shape_b)
         # self.checker.check_next(abstract_shape_b)
         if self.bn:
             abstract_shape_b = self.bn1b.forward(abstract_shape_b)
+            self.checker_b.check_next(abstract_shape_b)
             # self.checker.check_next(abstract_shape_b)
             prev_abstract_shapes_b.append(abstract_shape_b)
         else:
             prev_abstract_shapes_b.append(abstract_shape_b)
         # relu1b
         abstract_shape_b = self.relu1b.forward(abstract_shape_b)
+        self.checker_b.check_next(abstract_shape_b)
         # self.checker.check_next(abstract_shape_b)
         prev_abstract_shapes_b.append(abstract_shape_b)
         # conv2b
         abstract_shape_b = self.conv2b.forward(abstract_shape_b)
+        self.checker_b.check_next(abstract_shape_b)
         # self.checker.check_next(abstract_shape_b)
         if self.bn:
             abstract_shape_b = self.bn2b.forward(abstract_shape_b)
+            self.checker_b.check_next(abstract_shape_b)
             # self.checker.check_next(abstract_shape_b)
             prev_abstract_shapes_b.append(abstract_shape_b)
         else:

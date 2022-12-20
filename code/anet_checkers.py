@@ -1,5 +1,6 @@
 import torch
 from networks import NormalizedResnet
+from resnet import BasicBlock
 
 
 class ANetChecker:
@@ -13,6 +14,8 @@ class ANetChecker:
                         self.layers.append(subl)
                 else:
                     self.layers.append(l)
+        elif isinstance(net, torch.nn.Sequential):
+            self.layers = [l for l in net]
         else:
             self.layers = net.layers
 
@@ -37,7 +40,6 @@ class ANetChecker:
 
     def x_in_ashape(self, x, abstract_shape):
         raise NotImplementedError()
-
 
 class DummyANetChecker(ANetChecker):
     def __init__(self, net):
@@ -87,3 +89,38 @@ class InclusionANetChecker(ANetChecker):
             torch.set_printoptions()
 
         return ret
+
+class ResnetChecker(InclusionANetChecker):
+    def __init__(self, net):
+        self.path_a_checkers = []
+        self.path_b_checkers = []
+        self.layers = [net.normalization]
+        for l in net.resnet:
+            if isinstance(l, torch.nn.Sequential):
+                for subl in l:
+                    self.layers.append(subl)
+                    if isinstance(subl, BasicBlock):
+                        if len(subl.path_a) > 1:
+                            self.path_a_checkers.append(InclusionANetChecker(subl.path_a[1:]))
+                        else:
+                            self.path_a_checkers.append(InclusionANetChecker(subl.path_a))
+                        self.path_b_checkers.append(InclusionANetChecker(subl.path_b))
+            else:
+                self.layers.append(l)
+
+        self.current_layer = -1
+        self.current_path_a_checker = -1
+        self.current_path_b_checker = -1
+
+    def next_path_a_checker(self):
+        self.current_path_a_checker += 1
+        return self.path_a_checkers[self.current_path_a_checker]
+
+    def next_path_b_checker(self):
+        self.current_path_b_checker += 1
+        return self.path_b_checkers[self.current_path_b_checker]
+
+# class BlockCkecker(InclusionANetChecker):
+#     def __init__(self, layers):
+#         self.layers = layers
+#         self.current_layer = -1

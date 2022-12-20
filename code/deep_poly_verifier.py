@@ -16,7 +16,7 @@ from abstract_networks import (
     AbstractNet9,
     AbstractNetwork,
 )
-from anet_checkers import ANetChecker, DummyANetChecker, InclusionANetChecker
+from anet_checkers import ANetChecker, DummyANetChecker, InclusionANetChecker, ResnetChecker
 
 
 def get_anet_class_from_name(net_name) -> AbstractNetwork:
@@ -58,7 +58,7 @@ def get_checker_class_from_name(net_name) -> ANetChecker:
         "net6": InclusionANetChecker,
         "net7": InclusionANetChecker,
         "net8": InclusionANetChecker,
-        "net9": InclusionANetChecker,
+        "net9": ResnetChecker,
         "net10": InclusionANetChecker,
     }
     return checkers[net_name]
