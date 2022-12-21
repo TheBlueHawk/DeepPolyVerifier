@@ -10,7 +10,7 @@ from random import random
 DEVICE = "cpu"
 DTYPE = torch.float32
 x = 5
-DEBUG = True
+DEBUG = False
 
 
 def transform_image(pixel_values, input_dim):
