@@ -436,10 +436,25 @@ class ConvAbstractShape(AbstractShape):
         backsub_path_a = self.backsub(previous_shape.conv1_bn_a)
         backsub_path_a = backsub_path_a.zero_out_padding_weights()
         # Remove current conv bias to avoid double counting
-        self.y_greater[:, :, :, 0] = 0
-        self.y_less[:, :, :, 0] = 0
+        
+
+        # copy current shape and zero out bias
+        weights_bitmask = torch.ones_like(self.y_greater)
+        weights_bitmask[...,0] = 0 # zero out bias
+        curr_shape_b = ConvAbstractShape(
+            y_greater=self.y_greater * weights_bitmask, 
+            y_less=self.y_less * weights_bitmask, 
+            lower=self.lower, 
+            upper=self.upper, 
+            c_in=self.c_in, 
+            n_in=self.n_in, 
+            k=self.k, 
+            padding=self.padding, 
+            stride=self.stride)
+        # self.y_greater[:, :, :, 0] = 0
+        # self.y_less[:, :, :, 0] = 0
         # Path b
-        backsub_path_b = self.backsub(previous_shape.conv2_bn_b)
+        backsub_path_b = curr_shape_b.backsub(previous_shape.conv2_bn_b)
         backsub_path_b = backsub_path_b.zero_out_padding_weights()
         backsub_path_b = backsub_path_b.backsub(previous_shape.relu1b)
         backsub_path_b = backsub_path_b.backsub(previous_shape.conv1_bn_b)

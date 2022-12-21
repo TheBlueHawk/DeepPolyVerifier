@@ -32,7 +32,7 @@ class ANetChecker:
         self.current_layer += 1
 
         if not self.x_in_ashape(self.x.squeeze(0), abstract_shape):
-            raise Exception("Abstract shape doesn't contain the concrete point")
+            raise Exception("Abstract shape doesn't contain the concrete point or has nans")
 
     def recheck(self, abstract_shape):
         if not self.x_in_ashape(self.x.squeeze(0), abstract_shape):
@@ -67,13 +67,23 @@ class InclusionANetChecker(ANetChecker):
         bad_idx_l = abstract_shape.lower > x
         bad_idx_u = abstract_shape.upper < x
 
-        ret = torch.all(
+        sat1 = torch.all(
             (abstract_shape.lower <= x) | torch.isclose(abstract_shape.lower, x)
         ) and torch.all(
             (x <= abstract_shape.upper) | torch.isclose(abstract_shape.upper, x)
         )
+        sat2 = ~(
+            (abstract_shape.y_greater is not None and torch.isnan(abstract_shape.y_greater).any()) |
+            ((abstract_shape.y_greater is not None and  torch.isnan(abstract_shape.y_less).any()))|
+            torch.isnan(abstract_shape.lower).any() |
+            torch.isnan(abstract_shape.upper).any()
+        )
 
-        if not ret:
+        if not sat2:
+            print("Nans")
+
+
+        if not sat1:
             pts = 5
             torch.set_printoptions(precision=10)
             print(
@@ -102,7 +112,7 @@ class InclusionANetChecker(ANetChecker):
             )
             torch.set_printoptions()
 
-        return ret
+        return sat1 and sat2
 
 
 class ResnetChecker(InclusionANetChecker):

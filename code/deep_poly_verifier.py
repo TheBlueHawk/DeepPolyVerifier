@@ -79,7 +79,7 @@ class DeepPolyVerifier:
         self.N = 10
         self.gamma = 5
         self.ALPHA_EPOCHS = 2
-        self.ALPHA_ITERS = 1
+        self.ALPHA_ITERS = 3
         self.LR = 1
         self.WEIGHT_DECAY = 0
 
@@ -91,6 +91,7 @@ class DeepPolyVerifier:
         Returns:
             Boolean
         """
+        # torch.autograd.set_detect_anomaly(True)
         abstract_input = create_abstract_input_shape(inputs.squeeze(0), eps)
         self.checker.reset(inputs)
 
@@ -104,8 +105,8 @@ class DeepPolyVerifier:
                     abstract_input, true_label, self.N
                 )
                 print(f"Max violation:\t {final_abstract_shape.lower.min()}\n")
-                if verifyFinalShape(final_abstract_shape):
-                    return True
+                # if verifyFinalShape(final_abstract_shape):
+                #     return True
 
                 self.checker.reset(inputs)
 
