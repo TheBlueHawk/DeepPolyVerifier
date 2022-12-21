@@ -78,7 +78,7 @@ class DeepPolyVerifier:
         self.abstract_net = abstract_net_class(net, self.checker)
         self.N = 10
         self.gamma = 5
-        self.ALPHA_EPOCHS = 2
+        self.ALPHA_EPOCHS = 10
         self.ALPHA_ITERS = 20
         self.LR = 1.5
         self.WEIGHT_DECAY = 0
@@ -104,7 +104,7 @@ class DeepPolyVerifier:
                 final_abstract_shape = self.abstract_net.forward(
                     abstract_input, true_label, self.N
                 )
-                # print(f"Max violation:\t {final_abstract_shape.lower.min()}\n")
+                print(f"Max violation:\t {final_abstract_shape.lower.min()}\n")
                 if verifyFinalShape(final_abstract_shape):
                     return True
 
@@ -133,9 +133,11 @@ class DeepPolyVerifier:
                 # self.abstract_net.set_alphas(alphas_clamped)
 
             alphas = self.abstract_net.get_alphas()
-            new_alphas = [torch.rand_like(a) for a in alphas]
+            new_alphas = [
+                torch.normal(0, 0.2, a.shape, requires_grad=True) for a in alphas
+            ]
             self.abstract_net.set_alphas(new_alphas)
-            return False
+        return False
 
 
 def verifyFinalShape(final_shape: AbstractShape) -> bool:
