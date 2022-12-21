@@ -682,7 +682,7 @@ class AbstractNet8(AbstractNetwork):
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.block1.forward(abstract_shape, prev_abstract_shapes)
-        # abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
         self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
@@ -691,7 +691,7 @@ class AbstractNet8(AbstractNetwork):
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.block2.forward(abstract_shape, prev_abstract_shapes)
-        # abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+        abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
         self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
@@ -1069,7 +1069,7 @@ class AbstractBlockSubnet(AbstractNetwork):
         abstract_shape_b = self.conv1b.forward(abstract_shape_b)
         self.checker_b.check_next(abstract_shape_b)
         self.checker=self.checker_b
-        # abstract_shape_b = self.backsub(abstract_shape_b, previous_shapes, check=True)
+        abstract_shape_b = self.backsub(abstract_shape_b, previous_shapes, check=True)
         self.checker_b.recheck(abstract_shape_b)
         # self.checker.check_next(abstract_shape_b)
         if self.bn:
@@ -1100,11 +1100,16 @@ class AbstractBlockSubnet(AbstractNetwork):
         lower = abstract_shape_a.lower + abstract_shape_b.lower
         upper = abstract_shape_a.upper + abstract_shape_b.upper
         abstract_shape = ResidualAbstractShape(
-            None, None, lower, upper, *prev_abstract_shapes_a, *prev_abstract_shapes_b
+            torch.zeros(abstract_shape_b.y_greater.shape),
+            torch.zeros(abstract_shape_b.y_greater.shape),
+            lower, upper, *prev_abstract_shapes_a, *prev_abstract_shapes_b
         )
         # self.checker.check_next(abstract_shape)
         return abstract_shape
 
     def create_abstract_id_conv(self, c_out: int, c_in: int) -> AbstractConvolution:
-        kernel = torch.ones(c_out, c_in, 1, 1)
+        kernel = torch.zeros(c_out, c_in, 1, 1)
+        kernel_diag = torch.diagonal(kernel, dim1=0, dim2=1)
+        kernel_diag[...] = 1
+        # kernel, bias, stride, padding
         return AbstractConvolution(kernel, None, 1, 0)
