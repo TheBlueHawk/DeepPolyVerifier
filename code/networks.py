@@ -95,7 +95,7 @@ class Conv(nn.Module):
 
 
 class NormalizedResnet(nn.Module):
-    def __init__(self, device, resnet):
+    def __init__(self, device, resnet: ResNet):
         super(NormalizedResnet, self).__init__()
 
         self.normalization = Normalization(device, "cifar10")

@@ -5,9 +5,12 @@ import torch.nn.functional as F
 from networks import get_network, get_net_name, NormalizedResnet
 from deep_poly_verifier import DeepPolyVerifier
 
+from random import random
+
 DEVICE = "cpu"
 DTYPE = torch.float32
 x = 5
+DEBUG = False
 
 
 def transform_image(pixel_values, input_dim):
@@ -52,11 +55,23 @@ def get_net(net, net_name):
 
 
 def analyze(net, net_name, inputs, eps, true_label):
+    if DEBUG:
+        for _ in range(100):
+            verifier = DeepPolyVerifier(net, net_name)
+            inputs = torch.rand_like(inputs)
+            eps = random() / 4
+            # eps = 1
+            try:
+                print(verifier.verify(inputs, eps, true_label))
+            except:
+                print("Exception")
+
     verifier = DeepPolyVerifier(net, net_name)
     return verifier.verify(inputs, eps, true_label)
 
 
 def main():
+    # torch.autograd.set_detect_anomaly(True)
     parser = argparse.ArgumentParser(
         description="Neural network verification using DeepPoly relaxation"
     )

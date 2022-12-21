@@ -1,13 +1,44 @@
 #!/bin/bash
 
+dirs=('etc' 'www')
+
+gt=(
+	"verified"
+	"verified"
+	"verified"
+	"verified"
+	"not verified"
+	"verified"
+	"verified"
+	"not verified"
+	"verified"
+	"verified"
+	"verified"
+	"not verified"
+	"verified"
+	"not verified"
+	"verified"
+	"verified"
+	"verified"
+	"verified"
+	"verified"
+	"not verified"
+)
 rm $1/res.txt
+i=0
 for net in {1..10}
 do
 	echo Evaluating network net${net}...
+	echo
 	for spec in `ls $1/net${net}/`
 	do
 		echo ${spec}
 		res=$(python verifier.py --net net${net} --spec $1/net${net}/${spec})
 		echo net${k}_${net},$spec,$res >> $1/res.txt
+		echo tgt $res 	gt ${gt[i]}
+		let "i++"
+		echo
 	done
+	echo
 done
+
