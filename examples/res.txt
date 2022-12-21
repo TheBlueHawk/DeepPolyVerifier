@@ -1,20 +1,20 @@
-net_1,img1_0.0500.txt,verified
-net_1,img2_0.0550.txt,verified
-net_2,img1_0.2400.txt,verified
-net_2,img2_0.2360.txt,verified
-net_3,img1_0.0065.txt,not verified
-net_3,img2_0.0081.txt,verified
-net_4,img1_0.2240.txt,verified
-net_4,img2_0.2290.txt,not verified
-net_5,img1_0.0260.txt,verified
-net_5,img2_0.0470.txt,verified
-net_6,img1_0.0140.txt,verified
-net_6,img2_0.0147.txt,not verified
-net_7,img1_0.0540.txt,verified
-net_7,img2_0.1440.txt,not verified
+net_1,img1_0.0500.txt,Max violation: 0.0 verified
+net_1,img2_0.0550.txt,Max violation: 0.0 verified
+net_2,img1_0.2400.txt,Max violation: -6.820807933807373 Max violation: -2.1408169269561768 Max violation: 0.0 verified
+net_2,img2_0.2360.txt,Max violation: -15.959147453308105 Max violation: -6.847330093383789 Max violation: -2.474731683731079 Max violation: -0.8030387163162231 Max violation: -0.18777652084827423 Max violation: -0.010396355763077736 Max violation: 0.0 verified
+net_3,img1_0.0065.txt,Max violation: -0.43400055170059204 Max violation: -0.3500400185585022 Max violation: -0.3141027092933655 Max violation: -0.2973768413066864 Max violation: -0.290526807308197 Max violation: -0.2878553569316864 Max violation: -0.28682172298431396 Max violation: -0.2864258289337158 Max violation: -0.286272257566452 Max violation: -0.28621065616607666 Max violation: -0.28618764877319336 Max violation: -0.286177396774292 Max violation: -0.2861744165420532 Max violation: -0.28617173433303833 Max violation: -0.2861723303794861 not verified
+net_3,img2_0.0081.txt,Max violation: -0.42688223719596863 Max violation: -0.17989481985569 Max violation: -0.060195088386535645 Max violation: -0.006104275584220886 Max violation: 0.0 verified
+net_4,img1_0.2240.txt,Max violation: -2.959054470062256 Max violation: -1.1114859580993652 Max violation: -0.3170156478881836 Max violation: -0.0038385391235351562 Max violation: 0.0 verified
+net_4,img2_0.2290.txt,Max violation: -15.049919128417969 Max violation: -8.609380722045898 Max violation: -5.109195709228516 Max violation: -3.7488067150115967 Max violation: -3.2568368911743164 Max violation: -3.0554723739624023 Max violation: -2.9830806255340576 Max violation: -2.944669246673584 Max violation: -2.942903518676758 Max violation: -2.930741548538208 Max violation: -2.9394590854644775 Max violation: -2.9274544715881348 Max violation: -2.93949818611145 Max violation: -2.9220311641693115 Max violation: -2.943307876586914 not verified
+net_5,img1_0.0260.txt,upper-lower: tensor([0.6829547882, 0.6843717098, 0.6843717098, 0.6843717098, 0.6843717098]) bad lower x < l x tensor([0.5984549522, 0.5913336277, 0.5913336277, 0.5913336277, 0.5913336277], grad_fn=<SliceBackward0>) l tensor([0.5984554291, 0.5913338661, 0.5913338661, 0.5913338661, 0.5913338661]) bad upper x > u x tensor([], grad_fn=<SliceBackward0>) u tensor([])
+net_5,img2_0.0470.txt,upper-lower: tensor([1.2345724106, 1.2371332645, 1.2371332645, 1.2371332645, 1.2371332645]) bad lower x < l x tensor([0.5984549522, 0.5913336277, 0.5913336277, 0.5913336277, 0.5913336277], grad_fn=<SliceBackward0>) l tensor([0.5984554291, 0.5913338661, 0.5913338661, 0.5913338661, 0.5913338661]) bad upper x > u x tensor([], grad_fn=<SliceBackward0>) u tensor([])
+net_6,img1_0.0140.txt,Max violation: -1.150890588760376 Max violation: -0.2960374355316162 Max violation: 0.0 verified
+net_6,img2_0.0147.txt,Max violation: -2.4991471767425537 Max violation: -1.3382184505462646 Max violation: -0.6461218595504761 Max violation: -0.3779982328414917 Max violation: -0.3169807195663452 Max violation: -0.31382912397384644 Max violation: -0.3124569356441498 Max violation: -0.3121950626373291 Max violation: -0.3118571639060974 Max violation: -0.31194472312927246 Max violation: -0.3117706775665283 Max violation: -0.31190335750579834 Max violation: -0.311755508184433 Max violation: -0.3118933141231537 Max violation: -0.3117576837539673 not verified
+net_7,img1_0.0540.txt,Max violation: 0.0 verified
+net_7,img2_0.1440.txt,Max violation: -7.79841423034668 Max violation: -4.401004314422607 Max violation: -2.989856243133545 Max violation: -2.359178304672241 Max violation: -2.1258411407470703 not verified
 net_8,img1_0.0096.txt,
 net_8,img2_0.0100.txt,
-net_9,img1_0.0040.txt,
-net_9,img2_0.0040.txt,verified
+net_9,img1_0.0040.txt,upper-lower: tensor([0.5049514771, 0.5783805847, 0.6290960312, 0.6119346619, 0.6066513062], grad_fn=<SubBackward0>) bad lower x < l x tensor([1.0483264923, 0.8979486823, 0.8876376152, 0.8479368687, 0.8429553509], grad_fn=<SliceBackward0>) l tensor([17.5040626526, 16.3333263397, 15.8828973770, 15.8075237274, 16.9183750153], grad_fn=<SliceBackward0>) bad upper x > u x tensor([ 0.2084027082, 0.3745031357, 0.4597938657, -0.3010495305, -1.0890275240], grad_fn=<SliceBackward0>) u tensor([-1.6833379745e+01, -6.5506488085e-01, -1.1727884412e-02, -1.3171723366e+01, -8.5725421906e+00], grad_fn=<SliceBackward0>)
+net_9,img2_0.0040.txt,upper-lower: tensor([0.6420129538, 0.9408807755, 0.9312744141, 0.9229731560, 0.7576451302], grad_fn=<SubBackward0>) bad lower x < l x tensor([1.4027081728, 1.4598695040, 1.4701806307, 1.4397904873, 1.4283771515], grad_fn=<SliceBackward0>) l tensor([1.4145604372, 5.4732823372, 5.8815555573, 4.7299427986, 4.1526122093], grad_fn=<SliceBackward0>) bad upper x > u x tensor([1.3643343449, 1.5957658291, 1.6096951962, 1.6091270447, 1.6298075914], grad_fn=<SliceBackward0>) u tensor([-4.8653211594, -3.2732794285, -2.4848489761, -2.6187973022, -4.6026325226], grad_fn=<SliceBackward0>)
 net_10,img1_0.0014.txt,
 net_10,img2_0.0015.txt,

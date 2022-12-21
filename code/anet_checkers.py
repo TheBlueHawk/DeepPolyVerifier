@@ -41,15 +41,25 @@ class ANetChecker:
     def x_in_ashape(self, x, abstract_shape):
         raise NotImplementedError()
 
+
 class DummyANetChecker(ANetChecker):
     def __init__(self, net):
         pass
 
     def reset(self, x):
-        pass
+        self.x = x
 
     def check_next(self, abstract_shape):
         pass
+
+    def recheck(self, abstract_shape):
+        pass
+
+    def next_path_a_checker(self):
+        return DummyANetChecker(None)
+
+    def next_path_b_checker(self):
+        return DummyANetChecker(None)
 
 
 class InclusionANetChecker(ANetChecker):
@@ -94,6 +104,7 @@ class InclusionANetChecker(ANetChecker):
 
         return ret
 
+
 class ResnetChecker(InclusionANetChecker):
     def __init__(self, net):
         self.path_a_checkers = []
@@ -105,9 +116,13 @@ class ResnetChecker(InclusionANetChecker):
                     self.layers.append(subl)
                     if isinstance(subl, BasicBlock):
                         if len(subl.path_a) > 1:
-                            self.path_a_checkers.append(InclusionANetChecker(subl.path_a[1:]))
+                            self.path_a_checkers.append(
+                                InclusionANetChecker(subl.path_a[1:])
+                            )
                         else:
-                            self.path_a_checkers.append(InclusionANetChecker(subl.path_a))
+                            self.path_a_checkers.append(
+                                InclusionANetChecker(subl.path_a)
+                            )
                         self.path_b_checkers.append(InclusionANetChecker(subl.path_b))
             else:
                 self.layers.append(l)
@@ -123,6 +138,7 @@ class ResnetChecker(InclusionANetChecker):
     def next_path_b_checker(self):
         self.current_path_b_checker += 1
         return self.path_b_checkers[self.current_path_b_checker]
+
 
 # class BlockCkecker(InclusionANetChecker):
 #     def __init__(self, layers):

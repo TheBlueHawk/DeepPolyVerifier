@@ -1,6 +1,7 @@
 import sys
 import pytest
 from torch import Tensor
+from abstract_networks import create_abstract_id_conv
 
 sys.path.append("./code")
 
@@ -234,6 +235,19 @@ def test_AbstractNormalizer():
 
     assert torch.allclose(tgt_shape.lower, out_shape.lower)
     assert torch.allclose(tgt_shape.y_less, out_shape.y_less)
+
+
+def test_create_abstract_id_conv():
+    c_in = 3
+    n_in = 16
+    img = torch.zeros(c_in, n_in, n_in)
+    img[:, 1, 1] += 1
+    img[0, 0, :] += 1
+    img[1, 1, :] += 1
+
+    a_shape = create_abstract_input_shape(img, 0, bounds=(-10, 10))
+
+    id_conv = create_abstract_id_conv(3, 3)
 
 
 def main():
