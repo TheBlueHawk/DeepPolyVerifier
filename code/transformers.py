@@ -396,8 +396,11 @@ class AbstractBatchNorm:
         self.beta = beta  # <C>
         self.eps = eps
 
-    def normalize_lu(self, x: Tensor) -> Tensor:
-        x_shape = x.shape
+    def normalize_lu(self, option1: Tensor, option2) -> Tensor:
+        """
+        Where p>= uses option1, otherwise option2
+        """
+        x_shape = option1.shape
         running_mean = (
             self.running_mean.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
         ).expand(x_shape[0], x_shape[1], x_shape[2], x_shape[3])
@@ -414,7 +417,12 @@ class AbstractBatchNorm:
             x_shape[0], x_shape[1], x_shape[2], x_shape[3]
         )
 
-        return ((x - running_mean) / torch.sqrt(running_var + self.eps)) * gamma + beta
+        p = gamma / torch.sqrt(running_var + self.eps)
+        q = beta - (gamma * running_mean) / torch.sqrt(running_var + self.eps)
+
+        correct_lu = torch.where(p >= 0, option1, option2)
+
+        return p * correct_lu + q
 
     def normalize_ineq(self, x: Tensor) -> Tensor:
         x_shape = x.shape[0], x.shape[1] , x.shape[2], x.shape[3] - 1
@@ -465,8 +473,8 @@ class AbstractBatchNorm:
         assert x.lower.shape[0] == self.running_mean.shape[0]
         assert x.upper.shape[0] == self.running_mean.shape[0]
 
-        lower = self.normalize_lu(x.lower.unsqueeze(-1)).squeeze(-1)
-        upper = self.normalize_lu(x.upper.unsqueeze(-1)).squeeze(-1)
+        lower = self.normalize_lu(x.lower.unsqueeze(-1), x.upper.unsqueeze(-1)).squeeze(-1)
+        upper = self.normalize_lu(x.upper.unsqueeze(-1), x.lower.unsqueeze(-1),).squeeze(-1)
         y_greater = self.normalize_ineq(x.y_greater)
         y_less = self.normalize_ineq(x.y_less)
         return ConvAbstractShape(
