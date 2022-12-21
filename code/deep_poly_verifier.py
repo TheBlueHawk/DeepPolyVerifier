@@ -55,16 +55,16 @@ def get_anet_class_from_name(net_name) -> AbstractNetwork:
 
 def get_checker_class_from_name(net_name) -> ANetChecker:
     checkers = {
-        "net1": InclusionANetChecker,
-        "net2": InclusionANetChecker,
-        "net3": InclusionANetChecker,
-        "net4": InclusionANetChecker,
-        "net5": InclusionANetChecker,
+        "net1": DummyANetChecker,
+        "net2": DummyANetChecker,
+        "net3": DummyANetChecker,
+        "net4": DummyANetChecker,
+        "net5": DummyANetChecker,
         "net6": DummyANetChecker,
-        "net7": InclusionANetChecker,
-        "net8": ResnetChecker,
-        "net9": ResnetChecker,
-        "net10": ResnetChecker,
+        "net7": DummyANetChecker,
+        "net8": DummyANetChecker,
+        "net9": DummyANetChecker,
+        "net10": DummyANetChecker,
     }
     return checkers[net_name]
 
@@ -98,13 +98,13 @@ class DeepPolyVerifier:
         start_time = time.time()
         for _ in range(self.ALPHA_EPOCHS):
             for _ in range(self.ALPHA_ITERS):
-                # if time.time() - start_time > 60:
-                #     return False
+                if time.time() - start_time > 60:
+                    return False
 
                 final_abstract_shape = self.abstract_net.forward(
                     abstract_input, true_label, self.N
                 )
-                print(f"Max violation:\t {final_abstract_shape.lower.min()}\n")
+                # print(f"Max violation:\t {final_abstract_shape.lower.min()}\n")
                 if verifyFinalShape(final_abstract_shape):
                     return True
 
@@ -122,8 +122,8 @@ class DeepPolyVerifier:
                 optim.zero_grad()
                 loss = weightedLoss(final_abstract_shape.lower, self.gamma)
                 loss.backward()
-                print("percentage of nans")
-                print([(a.grad.isnan().sum(), a.grad.size()) for a in alphas])
+                # print("percentage of nans")
+                # print([(a.grad.isnan().sum(), a.grad.size()) for a in alphas])
                 for a in alphas:
                     a.grad[a.grad.isnan()] = 0
                 optim.step()

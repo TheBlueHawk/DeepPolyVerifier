@@ -71,6 +71,7 @@ def analyze(net, net_name, inputs, eps, true_label):
 
 
 def main():
+    # torch.autograd.set_detect_anomaly(True)
     parser = argparse.ArgumentParser(
         description="Neural network verification using DeepPoly relaxation"
     )

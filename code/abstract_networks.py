@@ -656,17 +656,17 @@ class AbstractNet8(AbstractNetwork):
         resnet = net.resnet
 
         self.conv1 = AbstractConvolution(resnet[0])
-        self.relu1 = AbstractReLU()
+        self.relu1 = AbstractReLU("heuristic")
 
         blockLayers1: torch.nn.Sequential = resnet[2]
-        self.block1 = AbstractBlockSubnet(blockLayers1[0], checker)
-        self.relu2 = AbstractReLU()
-        self.block2 = AbstractBlockSubnet(blockLayers1[2], checker)
-        self.relu3 = AbstractReLU()
+        self.block1 = AbstractBlockSubnet(blockLayers1[0], checker, "heuristic")
+        self.relu2 = AbstractReLU("heuristic")
+        self.block2 = AbstractBlockSubnet(blockLayers1[2], checker, "heuristic")
+        self.relu3 = AbstractReLU("heuristic")
 
         self.flatten = AbstractFlatten()
         self.lin1 = AbstractLinear(resnet[4])
-        self.relu4 = AbstractReLU()
+        self.relu4 = AbstractReLU("heuristic")
         self.lin2 = AbstractLinear(resnet[6])
         self.final_atransformer = None  # built in forward
 
@@ -881,23 +881,23 @@ class AbstractNet10(AbstractNetwork):
         resnet: ResNet = net.resnet
 
         self.conv1 = AbstractConvolution(resnet[0])
-        self.relu1 = AbstractReLU()
+        self.relu1 = AbstractReLU("heuristic")
 
         blockLayers1: torch.nn.Sequential = resnet[2]
-        self.block1 = AbstractBlockSubnet(blockLayers1[0], checker)
-        self.relu2 = AbstractReLU()
-        self.block2 = AbstractBlockSubnet(blockLayers1[2], checker)
-        self.relu3 = AbstractReLU()
+        self.block1 = AbstractBlockSubnet(blockLayers1[0], checker, "heuristic")
+        self.relu2 = AbstractReLU("heuristic")
+        self.block2 = AbstractBlockSubnet(blockLayers1[2], checker, "heuristic")
+        self.relu3 = AbstractReLU("heuristic")
 
         blockLayers2: torch.nn.Sequential = resnet[3]
-        self.block3 = AbstractBlockSubnet(blockLayers2[0], checker)
-        self.relu4 = AbstractReLU()
-        self.block4 = AbstractBlockSubnet(blockLayers2[2], checker)
-        self.relu5 = AbstractReLU()
+        self.block3 = AbstractBlockSubnet(blockLayers2[0], checker, "heuristic")
+        self.relu4 = AbstractReLU("heuristic")
+        self.block4 = AbstractBlockSubnet(blockLayers2[2], checker, "heuristic")
+        self.relu5 = AbstractReLU("heuristic")
 
         self.flatten = AbstractFlatten()
         self.lin1 = AbstractLinear(resnet[5])
-        self.relu6 = AbstractReLU()
+        self.relu6 = AbstractReLU("heuristic")
         self.lin2 = AbstractLinear(resnet[7])
         self.final_atransformer = None  # built in forward
 
@@ -1095,7 +1095,7 @@ class AbstractBlockSubnet(AbstractNetwork):
         prev_abstract_shapes_b.append(abstract_shape_b)
         # conv2b
         abstract_shape_b = self.conv2b.forward(abstract_shape_b)
-        
+
         # abstract_shape_b = self.backsub(abstract_shape_b, previous_shapes)
         self.checker_b.check_next(abstract_shape_b)
         if self.bn:
@@ -1106,13 +1106,12 @@ class AbstractBlockSubnet(AbstractNetwork):
             prev_abstract_shapes_b.append(abstract_shape_b)
 
         # Debugging gradients blowing up
-        self.abstract_shape_b = abstract_shape_b
-        self.abstract_shape_b.y_greater.retain_grad()
-        self.abstract_shape_b.y_less.retain_grad()
-        self.abstract_shape_a = abstract_shape_a
-        self.abstract_shape_a.y_greater.retain_grad()
-        self.abstract_shape_a.y_less.retain_grad()
-        
+        # self.abstract_shape_b = abstract_shape_b
+        # self.abstract_shape_b.y_greater.retain_grad()
+        # self.abstract_shape_b.y_less.retain_grad()
+        # self.abstract_shape_a = abstract_shape_a
+        # self.abstract_shape_a.y_greater.retain_grad()
+        # self.abstract_shape_a.y_less.retain_grad()
 
         # ResConnection
         lower = abstract_shape_a.lower + abstract_shape_b.lower

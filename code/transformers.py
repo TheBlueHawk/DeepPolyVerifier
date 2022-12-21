@@ -165,7 +165,7 @@ class AbstractReLU:
             elif self.alpha_init == "heuristic":
                 # choice1 = 3 * torch.ones_like(u_i)
                 # choice2 = -3 * torch.ones_like(u_i)
-                self.real_alphas = torch.where(u_i.abs() > l_i.abs(), 3., -3.)
+                self.real_alphas = torch.where(u_i.abs() > l_i.abs(), 3.0, -3.0)
                 self.real_alphas.requires_grad_()
                 self.alphas = self.real_alphas.sigmoid()
             elif self.alpha_init == "zeros":
@@ -424,15 +424,22 @@ class AbstractBatchNorm:
             x_shape[0], x_shape[1], x_shape[2], x_shape[3]
         )
 
+        assert (
+            torch.count_nonzero(torch.sqrt(running_var + self.eps))
+            == running_var.numel()
+        )
+
         p = gamma / torch.sqrt(running_var + self.eps)
         q = beta - (gamma * running_mean) / torch.sqrt(running_var + self.eps)
 
         correct_lu = torch.where(p >= 0, option1, option2)
 
-        return (correct_lu - running_mean) * gamma / torch.sqrt(running_var + self.eps) + beta
+        return (correct_lu - running_mean) * gamma / torch.sqrt(
+            running_var + self.eps
+        ) + beta
 
     def normalize_ineq(self, x: Tensor) -> Tensor:
-        x_shape = x.shape[0], x.shape[1] , x.shape[2], x.shape[3] - 1
+        x_shape = x.shape[0], x.shape[1], x.shape[2], x.shape[3] - 1
         running_mean_w = (
             self.running_mean.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
         ).expand(x_shape[0], x_shape[1], x_shape[2], x_shape[3])
@@ -466,12 +473,21 @@ class AbstractBatchNorm:
         beta_b = (self.beta.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)).expand(
             x_shape[0], x_shape[1], x_shape[2], 1
         )
-
+        assert (
+            torch.count_nonzero(torch.sqrt(running_var_b + self.eps))
+            == running_var_b.numel()
+        )
+        assert (
+            torch.count_nonzero(torch.sqrt(running_var_w + self.eps))
+            == running_var_w.numel()
+        )
         p_b = gamma_b / torch.sqrt(running_var_b + self.eps)
         q_b = beta_b - (gamma_b * running_mean_b) / torch.sqrt(running_var_b + self.eps)
 
         bias = x[..., 0:1]
-        new_bias = (bias - running_mean_b) * gamma_b / torch.sqrt(running_var_b + self.eps) + beta_b
+        new_bias = (bias - running_mean_b) * gamma_b / torch.sqrt(
+            running_var_b + self.eps
+        ) + beta_b
         weights = x[..., 1:]
         new_weights = weights * gamma_w / torch.sqrt(running_var_w + self.eps)
         return torch.cat([new_bias, new_weights], axis=3)
@@ -480,8 +496,13 @@ class AbstractBatchNorm:
         assert x.lower.shape[0] == self.running_mean.shape[0]
         assert x.upper.shape[0] == self.running_mean.shape[0]
 
-        lower = self.normalize_lu(x.lower.unsqueeze(-1), x.upper.unsqueeze(-1)).squeeze(-1)
-        upper = self.normalize_lu(x.upper.unsqueeze(-1), x.lower.unsqueeze(-1),).squeeze(-1)
+        lower = self.normalize_lu(x.lower.unsqueeze(-1), x.upper.unsqueeze(-1)).squeeze(
+            -1
+        )
+        upper = self.normalize_lu(
+            x.upper.unsqueeze(-1),
+            x.lower.unsqueeze(-1),
+        ).squeeze(-1)
         y_greater = self.normalize_ineq(x.y_greater)
         y_less = self.normalize_ineq(x.y_less)
         return ConvAbstractShape(
@@ -514,56 +535,7 @@ def conv_output_shape(h_w, kernel_size=1, stride=1, pad=0, dilation=1):
 
 
 def main():
-    layer = torch.nn.Conv2d(1, 16, (4, 4), 2, 1)
-    c_out, c_in, h, w = 2, 2, 3, 3
-    kh, kw = 2, 2
-    padding = (0, 0)
-    stride = (1, 1)
-    kernel = torch.concat(
-        [
-            torch.arange(-5, 3).reshape(1, 2, 2, 2),
-            torch.arange(-2, 6).reshape(1, 2, 2, 2),
-        ],
-        axis=0,
-    )
-    bias = torch.tensor([2.0, 1])
-
-    img = torch.zeros(c_in, h, w)
-    img[:, 1, 1] += 1
-    img[0, 0, :] += 1
-    img[1, 1, :] += 1
-    a_transformer = AbstractConvolution(kernel, bias, stride, padding)
-    a_shape = create_abstract_input_shape(img, 1, bounds=(-10, 10))
-
-    out = a_transformer.forward(a_shape)
-
-    print("img", img, sep="\n")
-    print("a_shape.upper", a_shape.upper, sep="\n")
-    print("a_shape.lower", a_shape.lower, sep="\n")
-    print("kernel", kernel, sep="\n")
-    print("bias", bias, sep="\n")
-    print("upper", out.upper, sep="\n")
-    print("lower", out.lower, sep="\n")
-
-    assert torch.allclose(
-        out.upper,
-        torch.tensor(
-            [
-                [[14.0, 12], [15, 13]],
-                [[31, 29], [26, 24]],
-            ]
-        ),
-    )
-
-    assert torch.allclose(
-        out.lower,
-        torch.tensor(
-            [
-                [[-22.0, -24], [-21, -23]],
-                [[-5, -7], [-10, -12]],
-            ]
-        ),
-    )
+    pass
 
 
 if __name__ == "__main__":

@@ -6,8 +6,8 @@ net_3,img10_0.0041.txt,not verified
 net_3,img3_0.0090.txt,verified
 net_4,img4_0.1502.txt,verified
 net_4,img9_0.0097.txt,verified
-net_5,img2_0.0588.txt,upper-lower: tensor([1.5445289612, 1.5477328300, 1.5477328300, 1.5477328300, 1.5477328300]) bad lower x < l x tensor([0.5984549522, 0.5913336277, 0.5913336277, 0.5913336277, 0.5913336277], grad_fn=<SliceBackward0>) l tensor([0.5984554291, 0.5913338661, 0.5913338661, 0.5913338661, 0.5913338661]) bad upper x > u x tensor([], grad_fn=<SliceBackward0>) u tensor([])
-net_5,img9_0.0159.txt,upper-lower: tensor([0.4176530838, 0.4185197353, 0.4185197353, 0.4185197353, 0.4185197353]) bad lower x < l x tensor([0.5984549522, 0.5913336277, 0.5913336277, 0.5913336277, 0.5913336277], grad_fn=<SliceBackward0>) l tensor([0.5984554291, 0.5913338661, 0.5913338661, 0.5913338661, 0.5913338661]) bad upper x > u x tensor([], grad_fn=<SliceBackward0>) u tensor([])
+net_5,img2_0.0588.txt,not verified
+net_5,img9_0.0159.txt,not verified
 net_6,img3_0.0315.txt,verified
 net_6,img5_0.0103.txt,not verified
 net_6,img8_0.0126.txt,verified
@@ -17,9 +17,9 @@ net_7,img9_0.2502.txt,not verified
 net_8,img10_0.0092.txt,not verified
 net_8,img3_0.0082.txt,not verified
 net_8,img7_0.0078.txt,not verified
-net_9,img1_0.0037.txt,not verified
-net_9,img7_0.0042.txt,Nans
-net_9,img9_0.0043.txt,Nans
+net_9,img1_0.0037.txt,verified
+net_9,img7_0.0042.txt,verified
+net_9,img9_0.0043.txt,not verified
 net_10,img10_0.0017.txt,verified
 net_10,img3_0.0015.txt,not verified
 net_10,img6_0.0016.txt,verified
