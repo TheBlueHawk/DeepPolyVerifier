@@ -1165,9 +1165,9 @@ class Profiler:
             self.time = self.start_time
 
     def next(self, str):
-        print(f"Runtime of {str}: {time.time() - self.time} s")
+        # print(f"Runtime of {str}: {time.time() - self.time} s")
         self.time = time.time()
 
     def end(self):
-        print(f"Total runtime since start: {time.time() - self.start_time}")
+        # print(f"Total runtime since start: {time.time() - self.start_time}")
         self.start_time = None
