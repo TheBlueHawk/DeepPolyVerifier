@@ -19,6 +19,7 @@ from transformers import (
 )
 from anet_checkers import ANetChecker
 from networks import NormalizedResnet
+import time
 
 
 def recompute_bounds_linear(first_ashape, curr_ashape):
@@ -473,12 +474,12 @@ class AbstractNet6(AbstractNetwork):
         # Conv(device, "cifar10", 32, 3, [(16, 4, 2, 1), (32, 4, 2, 1)], [100, 10], 10)
         self.normalize = AbstractNormalize(net.layers[0])
         self.conv1 = AbstractConvolution(net.layers[1])
-        self.relu1 = AbstractReLU()
+        self.relu1 = AbstractReLU("heuristic")
         self.conv2 = AbstractConvolution(net.layers[3])
-        self.relu2 = AbstractReLU()
+        self.relu2 = AbstractReLU("heuristic")
         self.flatten = AbstractFlatten()
         self.lin1 = AbstractLinear(net.layers[6])
-        self.relu3 = AbstractReLU()
+        self.relu3 = AbstractReLU("heuristic")
         self.lin2 = AbstractLinear(net.layers[8])
         self.final_atransformer = None  # built in forward
 
@@ -771,21 +772,23 @@ class AbstractNet9(AbstractNetwork):
 
         blockLayers2: torch.nn.Sequential = resnet[4]
         self.block2 = AbstractBlockSubnet(blockLayers2[0], checker, "heuristic")
-        self.relu3 = AbstractReLU()
+        self.relu3 = AbstractReLU("heuristic")
 
         self.flatten = AbstractFlatten()
         self.lin1 = AbstractLinear(resnet[6])
-        self.relu4 = AbstractReLU()
+        self.relu4 = AbstractReLU("heuristic")
         self.lin2 = AbstractLinear(resnet[8])
         self.final_atransformer = None  # built in forward
 
         self.checker = checker
+        self.profiler = Profiler()
 
     def forward(self, abstract_shape, true_label, N):
         self.final_atransformer = self.buildFinalLayer(true_label, N)
         prev_abstract_shapes = []
         self.checker.check_next(abstract_shape)
 
+        self.profiler.start()
         abstract_shape = self.normalize.forward(abstract_shape)
         self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
@@ -803,48 +806,65 @@ class AbstractNet9(AbstractNetwork):
         self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
+        self.profiler.next("Before block1")
+
         abstract_shape = self.block1.forward(abstract_shape, prev_abstract_shapes)
         self.checker.check_next(abstract_shape)
         abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
         self.checker.recheck(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
+        self.profiler.next("block1")
+
         abstract_shape = self.relu2.forward(abstract_shape)
         self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
+
+        self.profiler.next("relu 2")
 
         abstract_shape = self.block2.forward(abstract_shape, prev_abstract_shapes)
         abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
         self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
-        abstract_shape = self.relu3.forward(abstract_shape)
-        self.relu3_ashape = abstract_shape
-        self.relu3_ashape.y_greater.retain_grad()
-        self.relu3_ashape.y_less.retain_grad()
+        self.profiler.next("block 2")
 
+        abstract_shape = self.relu3.forward(abstract_shape)
         self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
+
+        self.profiler.next("relu 3")
 
         abstract_shape = self.flatten.forward(abstract_shape)
         self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
+
+        self.profiler.next("flatten")
 
         abstract_shape = self.lin1.forward(abstract_shape)
         abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
         self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
+        self.profiler.next("lin1")
+
         abstract_shape = self.relu4.forward(abstract_shape).expand()
         self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
+
+        self.profiler.next("relu 4")
 
         abstract_shape = self.lin2.forward(abstract_shape)
         self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
+        self.profiler.next("lin2")
+
         abstract_shape = self.final_atransformer.forward(abstract_shape)
         abstract_shape = self.backsub(abstract_shape, prev_abstract_shapes)
+
+        self.profiler.next("final_backsub")
+        self.profiler.end()
 
         return abstract_shape
 
@@ -1122,7 +1142,7 @@ class AbstractBlockSubnet(AbstractNetwork):
             lower,
             upper,
             *prev_abstract_shapes_a,
-            *prev_abstract_shapes_b
+            *prev_abstract_shapes_b,
         )
         return abstract_shape
 
@@ -1133,3 +1153,21 @@ class AbstractBlockSubnet(AbstractNetwork):
         kernel_diag[...] = 1
         # kernel, bias, stride, padding
         return AbstractConvolution(kernel, None, 1, 0)
+
+
+class Profiler:
+    def __init__(self):
+        self.start_time = None
+
+    def start(self):
+        if self.start_time is None:
+            self.start_time = time.time()
+            self.time = self.start_time
+
+    def next(self, str):
+        print(f"Runtime of {str}: {time.time() - self.time} s")
+        self.time = time.time()
+
+    def end(self):
+        print(f"Total runtime since start: {time.time() - self.start_time}")
+        self.start_time = None
