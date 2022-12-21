@@ -79,8 +79,8 @@ class DeepPolyVerifier:
         self.N = 10
         self.gamma = 5
         self.ALPHA_EPOCHS = 2
-        self.ALPHA_ITERS = 3
-        self.LR = 1
+        self.ALPHA_ITERS = 20
+        self.LR = 1.5
         self.WEIGHT_DECAY = 0
 
     def verify(self, inputs, eps, true_label) -> bool:
@@ -104,9 +104,9 @@ class DeepPolyVerifier:
                 final_abstract_shape = self.abstract_net.forward(
                     abstract_input, true_label, self.N
                 )
-                print(f"Max violation:\t {final_abstract_shape.lower.min()}\n")
-                # if verifyFinalShape(final_abstract_shape):
-                #     return True
+                # print(f"Max violation:\t {final_abstract_shape.lower.min()}\n")
+                if verifyFinalShape(final_abstract_shape):
+                    return True
 
                 self.checker.reset(inputs)
 
