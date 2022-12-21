@@ -1040,7 +1040,9 @@ class AbstractBlockSubnet(AbstractNetwork):
             if self.bn:
                 self.bn1a = AbstractBatchNorm(self.path_a[2])
         else:
-            self.conv1a = create_abstract_id_conv(self.conv2b.c_out, self.conv1b.c_in)
+            self.conv1a = self.create_abstract_id_conv(
+                self.conv2b.c_out, self.conv1b.c_in
+            )
         self.main_checker = checker
         self.checker_a = checker.next_path_a_checker()
         self.checker_b = checker.next_path_b_checker()
@@ -1104,7 +1106,10 @@ class AbstractBlockSubnet(AbstractNetwork):
         abstract_shape = ResidualAbstractShape(
             torch.zeros(abstract_shape_b.y_greater.shape),
             torch.zeros(abstract_shape_b.y_greater.shape),
-            lower, upper, *prev_abstract_shapes_a, *prev_abstract_shapes_b
+            lower,
+            upper,
+            *prev_abstract_shapes_a,
+            *prev_abstract_shapes_b
         )
         return abstract_shape
 
