@@ -185,14 +185,13 @@ class ConvAbstractShape(AbstractShape):
             f"\ny_less\n{self.y_less}\nlower\n{self.lower}\nupper\n{self.upper}"
         )
 
-    def zero_out_padding_weights(self):
-        # bitmask = torch.zeros(self.c_in, self.n_in + 2 * self.padding,
-        #                     self.n_in + 2 * self.padding)
+    def build_padding_bitmask(self):
         bitmask = torch.ones(1, self.c_in, self.n_in, self.n_in)
         C = self.y_greater.shape[0]
         N = self.y_greater.shape[1]
         # p = self.padding
         # bitmask[:, p:-p, p:-p] = 1
+        # Has zeros at the positions in y_greater/y_less that correspond to padding neurons
         unfolded_bitmask = F.unfold(
             input=bitmask,
             kernel_size=self.k,
@@ -201,18 +200,27 @@ class ConvAbstractShape(AbstractShape):
             stride=self.stride,
         )
 
+        # Reshaping to get the shape of y_greater/y_less
         unfolded_bitmask = (
             unfolded_bitmask.squeeze(dim=0)
             .swapaxes(0, 1)
             .reshape(N, N, -1)
             .unsqueeze(0)
         )
+        # Adding bitmask for bias (=1)
         unfolded_bitmask = torch.cat(
             [torch.ones(*unfolded_bitmask.shape[:-1], 1), unfolded_bitmask], axis=3
         )
 
-        new_y_greater = self.y_greater * unfolded_bitmask
-        new_y_less = self.y_less * unfolded_bitmask
+        return unfolded_bitmask
+
+    def zero_out_padding_weights(self):
+        # if self.k >= self.n_in + self.padding:
+        #     return self.prune_padding_weights() 
+
+        bitmask = self.build_padding_bitmask()
+        new_y_greater = self.y_greater * bitmask
+        new_y_less = self.y_less * bitmask
 
         return ConvAbstractShape(
             y_greater=new_y_greater,
@@ -226,6 +234,28 @@ class ConvAbstractShape(AbstractShape):
             stride=self.stride,
         )
 
+    # def prune_padding_weights(self):
+    #     if self.k < self.n_in + self.padding or self.padding == 0:
+    #         return self
+        
+    #     bitmask = self.build_padding_bitmask()
+    #     bool_bitmask = bitmask.to(torch.bool).expand(self.y_greater.shape)
+    #     new_c = self.y_greater.shape[0] * self.y_greater.shape[1] * self.y_greater.shape[2]
+    #     new_y_greater = self.y_greater[bool_bitmask].reshape(new_c, 1, 1, -1)
+    #     new_y_less = self.y_less[bool_bitmask].reshape(new_c, 1, 1, -1)
+
+    #     return ConvAbstractShape(
+    #         y_greater=new_y_greater,
+    #         y_less=new_y_less,
+    #         lower=None,  # self.lower.clone(),
+    #         upper=None,  # self.upper.clone(),
+    #         c_in=self.c_in,
+    #         n_in=self.n_in,
+    #         k=self.n_in,
+    #         padding=0,
+    #         stride=1,
+    #     )
+
     def backsub(self, previous_abstract_shape: AbstractShape) -> ConvAbstractShape:
         if isinstance(previous_abstract_shape, ReluAbstractShape):
             return self.backsub_relu(previous_abstract_shape)
@@ -235,7 +265,7 @@ class ConvAbstractShape(AbstractShape):
             return self.backsub_res(previous_abstract_shape)
         else:
             raise TypeError(type(previous_abstract_shape))
-
+    
     def backsub_relu(self, previous_relu_shape: ReluAbstractShape) -> ConvAbstractShape:
         # initialize the hyperparams
         cur_y_greater = self.y_greater

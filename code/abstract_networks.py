@@ -1125,12 +1125,12 @@ class AbstractBlockSubnet(AbstractNetwork):
             prev_abstract_shapes_b.append(abstract_shape_b)
 
         # Debugging gradients blowing up
-        self.abstract_shape_b = abstract_shape_b
-        self.abstract_shape_b.y_greater.retain_grad()
-        self.abstract_shape_b.y_less.retain_grad()
-        self.abstract_shape_a = abstract_shape_a
-        self.abstract_shape_a.y_greater.retain_grad()
-        self.abstract_shape_a.y_less.retain_grad()
+        # self.abstract_shape_b = abstract_shape_b
+        # self.abstract_shape_b.y_greater.retain_grad()
+        # self.abstract_shape_b.y_less.retain_grad()
+        # self.abstract_shape_a = abstract_shape_a
+        # self.abstract_shape_a.y_greater.retain_grad()
+        # self.abstract_shape_a.y_less.retain_grad()
         
 
         # ResConnection
