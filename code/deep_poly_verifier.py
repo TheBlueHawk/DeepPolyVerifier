@@ -104,7 +104,7 @@ class DeepPolyVerifier:
                 final_abstract_shape = self.abstract_net.forward(
                     abstract_input, true_label, self.N
                 )
-                print(f"Max violation:\t {final_abstract_shape.lower.min()}\n")
+                # print(f"Max violation:\t {final_abstract_shape.lower.min()}\n")
                 if verifyFinalShape(final_abstract_shape):
                     return True
 
