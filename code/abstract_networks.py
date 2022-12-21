@@ -763,14 +763,14 @@ class AbstractNet9(AbstractNetwork):
 
         self.conv1 = AbstractConvolution(resnet[0])
         self.bn1 = AbstractBatchNorm(resnet[1])
-        self.relu1 = AbstractReLU()
+        self.relu1 = AbstractReLU("heuristic")
 
         blockLayers1: torch.nn.Sequential = resnet[3]
-        self.block1 = AbstractBlockSubnet(blockLayers1[0], checker)
-        self.relu2 = AbstractReLU()
+        self.block1 = AbstractBlockSubnet(blockLayers1[0], checker, "heuristic")
+        self.relu2 = AbstractReLU("heuristic")
 
         blockLayers2: torch.nn.Sequential = resnet[4]
-        self.block2 = AbstractBlockSubnet(blockLayers2[0], checker)
+        self.block2 = AbstractBlockSubnet(blockLayers2[0], checker, "heuristic")
         self.relu3 = AbstractReLU()
 
         self.flatten = AbstractFlatten()
@@ -819,6 +819,10 @@ class AbstractNet9(AbstractNetwork):
         prev_abstract_shapes.append(abstract_shape)
 
         abstract_shape = self.relu3.forward(abstract_shape)
+        self.relu3_ashape = abstract_shape
+        self.relu3_ashape.y_greater.retain_grad()
+        self.relu3_ashape.y_less.retain_grad()
+
         self.checker.check_next(abstract_shape)
         prev_abstract_shapes.append(abstract_shape)
 
@@ -1014,7 +1018,7 @@ class AbstractNet10(AbstractNetwork):
 
 
 class AbstractBlockSubnet(AbstractNetwork):
-    def __init__(self, block: BasicBlock, checker) -> None:
+    def __init__(self, block: BasicBlock, checker, alpha_init="rand") -> None:
         self.path_a: torch.nn.Sequential = block.path_a
         self.path_b: torch.nn.Sequential = block.path_b
         self.bn: bool = block.bn
@@ -1023,12 +1027,12 @@ class AbstractBlockSubnet(AbstractNetwork):
         self.conv1b = AbstractConvolution(self.path_b[0])
         if self.bn:
             self.bn1b = AbstractBatchNorm(self.path_b[1])
-            self.relu1b = AbstractReLU()
+            self.relu1b = AbstractReLU(alpha_init)
             self.conv2b = AbstractConvolution(self.path_b[3])
             self.bn2b = AbstractBatchNorm(self.path_b[4])
         else:
             self.bn1b = None
-            self.relu1b = AbstractReLU()
+            self.relu1b = AbstractReLU(alpha_init)
             self.conv2b = AbstractConvolution(self.path_b[2])
             self.bn2b = None
 
@@ -1089,6 +1093,7 @@ class AbstractBlockSubnet(AbstractNetwork):
         prev_abstract_shapes_b.append(abstract_shape_b)
         # conv2b
         abstract_shape_b = self.conv2b.forward(abstract_shape_b)
+        
         # abstract_shape_b = self.backsub(abstract_shape_b, previous_shapes)
         self.checker_b.check_next(abstract_shape_b)
         if self.bn:
@@ -1097,6 +1102,15 @@ class AbstractBlockSubnet(AbstractNetwork):
             prev_abstract_shapes_b.append(abstract_shape_b)
         else:
             prev_abstract_shapes_b.append(abstract_shape_b)
+
+        # Debugging gradients blowing up
+        self.abstract_shape_b = abstract_shape_b
+        self.abstract_shape_b.y_greater.retain_grad()
+        self.abstract_shape_b.y_less.retain_grad()
+        self.abstract_shape_a = abstract_shape_a
+        self.abstract_shape_a.y_greater.retain_grad()
+        self.abstract_shape_a.y_less.retain_grad()
+        
 
         # ResConnection
         lower = abstract_shape_a.lower + abstract_shape_b.lower

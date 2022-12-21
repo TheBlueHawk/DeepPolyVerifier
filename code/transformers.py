@@ -158,9 +158,16 @@ class AbstractReLU:
                 # self.real_alphas = torch.randn_like(u_i, requires_grad=True)
                 self.real_alphas = torch.normal(0, 0.2, u_i.shape, requires_grad=True)
                 self.alphas = self.real_alphas.sigmoid()
+                self.alphas.retain_grad()
                 # torch.rand_like(
                 #     u_i, requires_grad=True
                 # )  # .requires_grad_()
+            elif self.alpha_init == "heuristic":
+                # choice1 = 3 * torch.ones_like(u_i)
+                # choice2 = -3 * torch.ones_like(u_i)
+                self.real_alphas = torch.where(u_i.abs() > l_i.abs(), 3., -3.)
+                self.real_alphas.requires_grad_()
+                self.alphas = self.real_alphas.sigmoid()
             elif self.alpha_init == "zeros":
                 self.alphas = torch.zeros_like(u_i, requires_grad=True)
             else:
@@ -422,7 +429,7 @@ class AbstractBatchNorm:
 
         correct_lu = torch.where(p >= 0, option1, option2)
 
-        return p * correct_lu + q
+        return (correct_lu - running_mean) * gamma / torch.sqrt(running_var + self.eps) + beta
 
     def normalize_ineq(self, x: Tensor) -> Tensor:
         x_shape = x.shape[0], x.shape[1] , x.shape[2], x.shape[3] - 1
@@ -464,9 +471,9 @@ class AbstractBatchNorm:
         q_b = beta_b - (gamma_b * running_mean_b) / torch.sqrt(running_var_b + self.eps)
 
         bias = x[..., 0:1]
-        new_bias = p_b * bias + q_b
+        new_bias = (bias - running_mean_b) * gamma_b / torch.sqrt(running_var_b + self.eps) + beta_b
         weights = x[..., 1:]
-        new_weights = p_w * weights
+        new_weights = weights * gamma_w / torch.sqrt(running_var_w + self.eps)
         return torch.cat([new_bias, new_weights], axis=3)
 
     def forward(self, x: ConvAbstractShape) -> ConvAbstractShape:

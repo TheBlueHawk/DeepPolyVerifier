@@ -78,8 +78,8 @@ class DeepPolyVerifier:
         self.abstract_net = abstract_net_class(net, self.checker)
         self.N = 10
         self.gamma = 5
-        self.ALPHA_EPOCHS = 2
-        self.ALPHA_ITERS = 3
+        self.ALPHA_EPOCHS = 1
+        self.ALPHA_ITERS = 10
         self.LR = 1
         self.WEIGHT_DECAY = 0
 
@@ -98,15 +98,15 @@ class DeepPolyVerifier:
         start_time = time.time()
         for _ in range(self.ALPHA_EPOCHS):
             for _ in range(self.ALPHA_ITERS):
-                if time.time() - start_time > 60:
-                    return False
+                # if time.time() - start_time > 60:
+                #     return False
 
                 final_abstract_shape = self.abstract_net.forward(
                     abstract_input, true_label, self.N
                 )
                 print(f"Max violation:\t {final_abstract_shape.lower.min()}\n")
-                # if verifyFinalShape(final_abstract_shape):
-                #     return True
+                if verifyFinalShape(final_abstract_shape):
+                    return True
 
                 self.checker.reset(inputs)
 
@@ -115,12 +115,17 @@ class DeepPolyVerifier:
                 # from input neurons to bounds
 
                 alphas = self.abstract_net.get_alphas()
+                # print([(float(a.min()), float(a.max())) for a in alphas])
                 optim = torch.optim.AdamW(
                     alphas, lr=self.LR  # , weight_decay=self.WEIGHT_DECAY
                 )
                 optim.zero_grad()
                 loss = weightedLoss(final_abstract_shape.lower, self.gamma)
                 loss.backward()
+                print("percentage of nans")
+                print([(a.grad.isnan().sum(), a.grad.size()) for a in alphas])
+                for a in alphas:
+                    a.grad[a.grad.isnan()] = 0
                 optim.step()
                 # alphas_clamped = [
                 #     a.clamp(0, 1).detach().requires_grad_() for a in alphas
